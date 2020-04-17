@@ -4,6 +4,19 @@
   
   
   <entry>
+    <title>利用github和hexo快速搭建个人博客</title>
+    <link href="/2020/04/17/%E5%88%A9%E7%94%A8github%E5%92%8Chexo%E5%BF%AB%E9%80%9F%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/"/>
+    <url>/2020/04/17/%E5%88%A9%E7%94%A8github%E5%92%8Chexo%E5%BF%AB%E9%80%9F%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/</url>
+    
+    <content type="html"><![CDATA[<h3 id="一、准备工作"><a href="#一、准备工作" class="headerlink" title="一、准备工作"></a>一、准备工作</h3><h4 id="安装git"><a href="#安装git" class="headerlink" title="安装git"></a>安装git</h4><p><code>git</code>下载地址：<code>http://gitforwindows.org</code></p><h4 id="安装node-js"><a href="#安装node-js" class="headerlink" title="安装node.js"></a>安装node.js</h4><p> <code>node.js</code> 下载地址：<code>http://nodejs.org/en/</code> </p><h3 id="二、本地搭建"><a href="#二、本地搭建" class="headerlink" title="二、本地搭建"></a>二、本地搭建</h3><ul><li><p>选择一个文件夹建一个目录<code>blog</code>存放博客相关文件，文件夹内右键打开<code>git bash here</code>，在窗口中执行以下所有命令</p></li><li><p>用<code>npm</code>安装<code>hexo</code>，由于国内网络高“墙”深院，避免安装缓慢或失败，这里切换阿里的<code>NPM</code>镜像，没办法只能采用迂回战术了。</p></li></ul><pre><code class="sh">$ npm install -g cnpm --registry=http://registry.npm.taobao.org</code></pre><p>用 <code>cnpm</code> 安装 <code>hexo</code></p><pre><code class="sh">$ cnpm install -g hexo-cli$ cnpm install hexo --save##检查hexo是否安装成功$ hexo -v</code></pre><ul><li>在<code>blog</code>文件夹建一个<code>hexo</code>文件存放博客，进入也打开<code>git bash here</code></li></ul><pre><code class="sh">$ hexo init</code></pre><p>初始化成功后，<code>hexo文件</code>夹内会出现如下的文件：</p><p><code>node_modules</code>: 依赖包<br><code>public</code>：存放生成的页面<br><code>scaffolds</code>：生成文章的一些模板<br><code>source</code>：用来存放你的文章<br><code>themes</code>：放下下载的主题<br><code>_config.yml:</code> 博客的核心配置文件（设置主体、标题等属性）</p><ul><li><p>接着需要执行一下<code>cnpm install</code>命令，要不下边的启动会提示命令不合法。</p></li><li><p>最后使用<code>hexo s -g</code>启动安装好的<code>hexo</code></p></li></ul><h3 id="三、托管至GitHub"><a href="#三、托管至GitHub" class="headerlink" title="三、托管至GitHub"></a>三、托管至GitHub</h3><ul><li><p>建立一个仓库，名称为<code>xxx.github.io</code></p></li><li><p>配置<code>_config.xml</code></p></li></ul>]]></content>
+    
+    
+    
+  </entry>
+  
+  
+  
+  <entry>
     <title>AQS结构及源码解析</title>
     <link href="/2020/04/04/AQS%E7%BB%93%E6%9E%84%E5%8F%8A%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/"/>
     <url>/2020/04/04/AQS%E7%BB%93%E6%9E%84%E5%8F%8A%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/</url>
