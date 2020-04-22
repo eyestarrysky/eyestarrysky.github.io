@@ -1,75 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>利用github和hexo快速搭建个人博客</title>
-    <url>/2020/04/17/%E5%88%A9%E7%94%A8github%E5%92%8Chexo%E5%BF%AB%E9%80%9F%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/</url>
-    <content><![CDATA[<h3 id="一、准备工作"><a href="#一、准备工作" class="headerlink" title="一、准备工作"></a>一、准备工作</h3><h4 id="安装git"><a href="#安装git" class="headerlink" title="安装git"></a>安装git</h4><p><code>git</code>下载地址：<code>http://gitforwindows.org</code></p>
-<h4 id="安装node-js"><a href="#安装node-js" class="headerlink" title="安装node.js"></a>安装node.js</h4><p> <code>node.js</code> 下载地址：<code>http://nodejs.org/en/</code> </p>
-<h3 id="二、本地搭建"><a href="#二、本地搭建" class="headerlink" title="二、本地搭建"></a>二、本地搭建</h3><ul>
-<li><p>选择一个文件夹建一个目录<code>blog</code>存放博客相关文件，文件夹内右键打开<code>git bash here</code>，在窗口中执行以下所有命令</p>
-</li>
-<li><p>用<code>npm</code>安装<code>hexo</code>，由于国内网络高“墙”深院，避免安装缓慢或失败，这里切换阿里的<code>NPM</code>镜像，没办法只能采用迂回战术了。</p>
-</li>
-</ul>
-<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ npm install -g cnpm --registry=http://registry.npm.taobao.org</span><br></pre></td></tr></table></figure>
-
-<p>用 <code>cnpm</code> 安装 <code>hexo</code></p>
-<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ cnpm install -g hexo-cli</span><br><span class="line">$ cnpm install hexo --save</span><br><span class="line"><span class="comment">##检查hexo是否安装成功</span></span><br><span class="line">$ hexo -v</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>在<code>blog</code>文件夹建一个<code>hexo</code>文件存放博客，进入也打开<code>git bash here</code></li>
-</ul>
-<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ hexo init</span><br></pre></td></tr></table></figure>
-
-<p>初始化成功后，<code>hexo文件</code>夹内会出现如下的文件：</p>
-<p><code>node_modules</code>: 依赖包<br><code>public</code>：存放生成的页面<br><code>scaffolds</code>：生成文章的一些模板<br><code>source</code>：用来存放你的文章<br><code>themes</code>：放下下载的主题<br><code>_config.yml:</code> 博客的核心配置文件（设置主体、标题等属性）</p>
-<ul>
-<li><p>接着需要执行一下<code>cnpm install</code>命令，要不下边的启动会提示命令不合法。</p>
-</li>
-<li><p>最后使用<code>hexo s -g</code>启动安装好的<code>hexo</code></p>
-</li>
-</ul>
-<h3 id="三、托管至GitHub"><a href="#三、托管至GitHub" class="headerlink" title="三、托管至GitHub"></a>三、托管至GitHub</h3><ul>
-<li><p>建立一个仓库，名称为<code>xxx.github.io</code></p>
-</li>
-<li><p>配置<code>_config.xml</code>文件，添加<code>GitHub</code>地址</p>
-</li>
-</ul>
-<figure class="highlight yml"><table><tr><td class="code"><pre><span class="line"><span class="attr">deploy:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">git</span></span><br><span class="line">  <span class="attr">repo:</span> <span class="string">https://github.com/xxx/xxx.github.io.git</span></span><br><span class="line">  <span class="attr">branch:</span> <span class="string">master</span></span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>安装部署命令<code>deploy-git</code> ，这样你才能用命令部署到<code>GitHub</code></li>
-</ul>
-<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ cnpm install hexo-deployer-git  --save</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>安装好后，依次执行下列命令，提交本地<code>hexo</code>文件到<code>GitHub</code></li>
-</ul>
-<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ hexo clean</span><br><span class="line">$ hexo generate</span><br><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>最后访问<code>https://xxx.github.io.git</code>即可</li>
-</ul>
-<h3 id="四、选择自己喜欢的主题"><a href="#四、选择自己喜欢的主题" class="headerlink" title="四、选择自己喜欢的主题"></a>四、选择自己喜欢的主题</h3><ul>
-<li><p>到<code>http://hexo.io/themes/</code>下载主题，<code>git clone</code>到本地</p>
-<p><code>git clone https://github.com/iissnan/hexo-theme-next</code></p>
-</li>
-<li><p>修改<code>hexo</code>文件夹下的<code>_config.yml</code>文件中的<code>theme</code>属性</p>
-</li>
-</ul>
-<figure class="highlight yml"><table><tr><td class="code"><pre><span class="line"><span class="attr">theme:</span> <span class="string">hexo-theme-next</span></span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>再次打包上传即可<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ hexo clean</span><br><span class="line">$ hexo generate</span><br><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-
-
-</li>
-</ul>
-<h3 id="五、Hexo基本操作"><a href="#五、Hexo基本操作" class="headerlink" title="五、Hexo基本操作"></a>五、Hexo基本操作</h3><p>博客文章都放在<code>source\_post</code>目录下</p>
-]]></content>
-  </entry>
-  <entry>
     <title>AQS结构及源码解析</title>
     <url>/2020/04/04/AQS%E7%BB%93%E6%9E%84%E5%8F%8A%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/</url>
     <content><![CDATA[<h2 id="AQS（AbstaractQueuedSynchronize）"><a href="#AQS（AbstaractQueuedSynchronize）" class="headerlink" title="AQS（AbstaractQueuedSynchronize）"></a>AQS（AbstaractQueuedSynchronize）</h2><blockquote>
@@ -174,6 +105,75 @@
 
 <p><strong>代码逻辑比较容易理解，需要注意的是，共享模式，释放同步状态也是多线程的，此处采用了CAS自旋来保证。</strong></p>
 <h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p><strong><font style="color:red">AQS是JUC中很多同步组件的构建基础，简单来讲，它内部实现主要是状态变量state和一个FIFO队列来完成，同步队列的头结点是当前获取到同步状态的结点，获取同步状态state失败的线程，会被构造成一个结点（或共享式或独占式）加入到同步队列尾部（采用自旋CAS来保证此操作的线程安全），随后线程会阻塞；释放时唤醒头结点的后继结点，使其加入对同步状态的争夺中。</font></strong></p>
+]]></content>
+  </entry>
+  <entry>
+    <title>利用github和hexo快速搭建个人博客</title>
+    <url>/2020/04/17/%E5%88%A9%E7%94%A8github%E5%92%8Chexo%E5%BF%AB%E9%80%9F%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/</url>
+    <content><![CDATA[<h3 id="一、准备工作"><a href="#一、准备工作" class="headerlink" title="一、准备工作"></a>一、准备工作</h3><h4 id="安装git"><a href="#安装git" class="headerlink" title="安装git"></a>安装git</h4><p><code>git</code>下载地址：<code>http://gitforwindows.org</code></p>
+<h4 id="安装node-js"><a href="#安装node-js" class="headerlink" title="安装node.js"></a>安装node.js</h4><p> <code>node.js</code> 下载地址：<code>http://nodejs.org/en/</code> </p>
+<h3 id="二、本地搭建"><a href="#二、本地搭建" class="headerlink" title="二、本地搭建"></a>二、本地搭建</h3><ul>
+<li><p>选择一个文件夹建一个目录<code>blog</code>存放博客相关文件，文件夹内右键打开<code>git bash here</code>，在窗口中执行以下所有命令</p>
+</li>
+<li><p>用<code>npm</code>安装<code>hexo</code>，由于国内网络高“墙”深院，避免安装缓慢或失败，这里切换阿里的<code>NPM</code>镜像，没办法只能采用迂回战术了。</p>
+</li>
+</ul>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ npm install -g cnpm --registry=http://registry.npm.taobao.org</span><br></pre></td></tr></table></figure>
+
+<p>用 <code>cnpm</code> 安装 <code>hexo</code></p>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ cnpm install -g hexo-cli</span><br><span class="line">$ cnpm install hexo --save</span><br><span class="line"><span class="comment">##检查hexo是否安装成功</span></span><br><span class="line">$ hexo -v</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>在<code>blog</code>文件夹建一个<code>hexo</code>文件存放博客，进入也打开<code>git bash here</code></li>
+</ul>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ hexo init</span><br></pre></td></tr></table></figure>
+
+<p>初始化成功后，<code>hexo文件</code>夹内会出现如下的文件：</p>
+<p><code>node_modules</code>: 依赖包<br><code>public</code>：存放生成的页面<br><code>scaffolds</code>：生成文章的一些模板<br><code>source</code>：用来存放你的文章<br><code>themes</code>：放下下载的主题<br><code>_config.yml:</code> 博客的核心配置文件（设置主体、标题等属性）</p>
+<ul>
+<li><p>接着需要执行一下<code>cnpm install</code>命令，要不下边的启动会提示命令不合法。</p>
+</li>
+<li><p>最后使用<code>hexo s -g</code>启动安装好的<code>hexo</code></p>
+</li>
+</ul>
+<h3 id="三、托管至GitHub"><a href="#三、托管至GitHub" class="headerlink" title="三、托管至GitHub"></a>三、托管至GitHub</h3><ul>
+<li><p>建立一个仓库，名称为<code>xxx.github.io</code></p>
+</li>
+<li><p>配置<code>_config.xml</code>文件，添加<code>GitHub</code>地址</p>
+</li>
+</ul>
+<figure class="highlight yml"><table><tr><td class="code"><pre><span class="line"><span class="attr">deploy:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">git</span></span><br><span class="line">  <span class="attr">repo:</span> <span class="string">https://github.com/xxx/xxx.github.io.git</span></span><br><span class="line">  <span class="attr">branch:</span> <span class="string">master</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>安装部署命令<code>deploy-git</code> ，这样你才能用命令部署到<code>GitHub</code></li>
+</ul>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ cnpm install hexo-deployer-git  --save</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>安装好后，依次执行下列命令，提交本地<code>hexo</code>文件到<code>GitHub</code></li>
+</ul>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ hexo clean</span><br><span class="line">$ hexo generate</span><br><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>最后访问<code>https://xxx.github.io.git</code>即可</li>
+</ul>
+<h3 id="四、选择自己喜欢的主题"><a href="#四、选择自己喜欢的主题" class="headerlink" title="四、选择自己喜欢的主题"></a>四、选择自己喜欢的主题</h3><ul>
+<li><p>到<code>http://hexo.io/themes/</code>下载主题，<code>git clone</code>到本地</p>
+<p><code>git clone https://github.com/iissnan/hexo-theme-next</code></p>
+</li>
+<li><p>修改<code>hexo</code>文件夹下的<code>_config.yml</code>文件中的<code>theme</code>属性</p>
+</li>
+</ul>
+<figure class="highlight yml"><table><tr><td class="code"><pre><span class="line"><span class="attr">theme:</span> <span class="string">hexo-theme-next</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>再次打包上传即可<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">$ hexo clean</span><br><span class="line">$ hexo generate</span><br><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
+
+
+
+</li>
+</ul>
+<h3 id="五、Hexo基本操作"><a href="#五、Hexo基本操作" class="headerlink" title="五、Hexo基本操作"></a>五、Hexo基本操作</h3><p>博客文章都放在<code>source\_post</code>目录下</p>
 ]]></content>
   </entry>
 </search>
