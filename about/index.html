@@ -17,7 +17,7 @@
   <meta name="description" content="">
   <meta name="author" content="eyestarrysky">
   <meta name="keywords" content="">
-  <title>标签 - 眼底星空</title>
+  <title>关于 - 眼底星空</title>
 
   <link  rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/5.12.1/css/all.min.css" />
 <link  rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/css/bootstrap.min.css" />
@@ -130,13 +130,41 @@
         <div class="py-5" id="board"
           >
           
+            <div class="about-avatar">
+              <img src="/img/avatar.png"
+                   class="img-fluid" alt="avatar">
+            </div>
+          
           <div class="container">
             <div class="row">
               <div class="col-12 col-md-10 m-auto">
                 
 
-<div class="text-center tagcloud">
-  <a href="/tags/Java/" style="font-size: 15px; color: #bbe">Java</a> <a href="/tags/%E5%B9%B6%E5%8F%91%E5%8C%85/" style="font-size: 15px; color: #bbe">并发包</a> <a href="/tags/%E5%BB%BA%E7%AB%99/" style="font-size: 15px; color: #bbe">建站</a>
+<div class="text-center">
+  <p class="h3">eyestarrysky</p>
+  <p>撸码爱好者 / 一直在减肥</p>
+  
+    
+    
+    
+    <a href="https://github.com" target="_blank" rel="noopener" class="h4 px-1 false">
+      <i class="fab fa-github" aria-hidden="true"></i>
+      
+    </a>
+  
+    
+    
+    
+    <a href="https://twitter.com" target="_blank" rel="noopener" class="h4 px-1 false">
+      <i class="fab fa-twitter" aria-hidden="true"></i>
+      
+    </a>
+  
+    
+    
+</div>
+<div class="mt-5 markdown-body">
+  
 </div>
 
               </div>
@@ -222,6 +250,20 @@
 
 
 
+  <script  src="https://cdn.staticfile.org/prettify/188.0.0/prettify.min.js" ></script>
+  <script>
+    $(document).ready(function () {
+      $('pre').each(function () {
+        const pre = $(this);
+        if (pre.find('code.mermaid').length > 0) {
+          return;
+        }
+        pre.addClass('prettyprint  linenums');
+      });
+      prettyPrint();
+    })
+  </script>
+
 
 
   <script  src="https://cdn.staticfile.org/typed.js/2.0.11/typed.min.js" ></script>
@@ -229,7 +271,7 @@
     var typed = new Typed('#subtitle', {
       strings: [
         '  ',
-        "标签&nbsp;",
+        "关于&nbsp;",
       ],
       cursorChar: "_",
       typeSpeed: 70,

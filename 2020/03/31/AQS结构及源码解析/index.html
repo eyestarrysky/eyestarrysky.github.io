@@ -17,7 +17,7 @@
   <meta name="description" content="">
   <meta name="author" content="eyestarrysky">
   <meta name="keywords" content="">
-  <title>AQS结构及源码解析 - 眼底星空</title>
+  <title>AQS结构及源码解析.md - 眼底星空</title>
 
   <link  rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/5.12.1/css/all.min.css" />
 <link  rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/css/bootstrap.min.css" />
@@ -119,7 +119,7 @@
               
                 <p class="mt-3 post-meta">
                   <i class="fas fa-calendar-alt" aria-hidden="true"></i>
-                  星期六, 四月 4日 2020, 3:59 下午
+                  星期二, 三月 31日 2020, 3:30 下午
                 </p>
               
 
@@ -308,7 +308,7 @@
 <h3 id="AQS源码分析"><a href="#AQS源码分析" class="headerlink" title="AQS源码分析"></a>AQS源码分析</h3><blockquote>
 <p>AQS的实现依赖内部的同步队列（FIFO双向队列），如果当前线程获取同步状态失败，AQS会将该线程以及等待状态等信息构造成一个Node，将其加入同步队列的尾部，同时阻塞当前线程，当同步状态释放时，唤醒队列的头节点。</p>
 </blockquote>
-<p><img src="http://q7g5kgqmj.bkt.clouddn.com/AQS1.png" alt="AQS1"></p>
+<p><img src="../image/AQS1.png" alt="AQS1"></p>
 <h4 id="获取同步状态"><a href="#获取同步状态" class="headerlink" title="获取同步状态"></a>获取同步状态</h4><blockquote>
 <p>假设线程A要获取同步状态（这里想象成锁，方便理解），初始状态下state=0,所以线程A可以顺利获取锁，A获取锁后将state置为1。在A没有释放锁期间，线程B也来获取锁，此时因为state=1，表示锁被占用，所以将B的线程信息和等待状态等信息构成出一个Node节点对象，放入同步队列，head和tail分别指向队列的头部和尾部（此时队列中有一个空的Node节点作为头点，head指向这个空节点，空Node的后继节点是B对应的Node节点，tail指向它），同时阻塞线程B(这里的阻塞使用的是LockSupport.park()方法)。后续如果再有线程要获取锁，都会加入队列尾部并阻塞。</p>
 </blockquote>
@@ -692,6 +692,15 @@ private Node enq(final Node node) {
               <p>
                 
                 
+                  <span>
+                <i class="iconfont icon-tag"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/Java/">Java</a>
+                    
+                      <a class="hover-with-bg" href="/tags/%E5%B9%B6%E5%8F%91%E5%8C%85/">并发包</a>
+                    
+                  </span>
+                
               </p>
               
                 <p class="note note-warning">本博客所有文章除特别声明外，均采用 <a href="https://zh.wikipedia.org/wiki/Wikipedia:CC_BY-SA_3.0%E5%8D%8F%E8%AE%AE%E6%96%87%E6%9C%AC" target="_blank" rel="nofollow noopener noopener">CC BY-SA 3.0协议</a> 。转载请注明出处！</p>
@@ -863,7 +872,7 @@ private Node enq(final Node node) {
     var typed = new Typed('#subtitle', {
       strings: [
         '  ',
-        "AQS结构及源码解析&nbsp;",
+        "AQS结构及源码解析.md&nbsp;",
       ],
       cursorChar: "_",
       typeSpeed: 70,
