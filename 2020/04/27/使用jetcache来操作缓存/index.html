@@ -128,7 +128,7 @@
                   
                   <span class="post-meta">
                     <i class="far fa-chart-bar"></i>
-                    841 字
+                    1.1k 字
                   </span>
                 
 
@@ -138,7 +138,7 @@
                       <i class="far fa-clock"></i>
                     
                     
-                    13
+                    16
                      分钟
                   </span>
                 
@@ -308,6 +308,20 @@ public int deleteUserByIdAndCreateCache(Long userId) {
         log.info(&quot;同步删除缓存, userId = {}, res = {}&quot;, userId, deleteResult);
     }
     return result;
+}</code></pre>
+<h3 id="高级API"><a href="#高级API" class="headerlink" title="高级API"></a>高级API</h3><h4 id="自动刷新缓存"><a href="#自动刷新缓存" class="headerlink" title="自动刷新缓存"></a>自动刷新缓存</h4><blockquote>
+<p>从JetCache2.2版本开始，RefreshCache基于decorator模式提供了自动刷新的缓存的能力，目的是为了防止缓存失效时造成的雪崩效应打爆数据库。 对一些key比较少，实时性要求不高，加载开销非常大的缓存场景，适合使用自动刷新。上面的代码指定每分钟刷新一次，30分钟如果没有访问就停止刷新。如果缓存是redis或者多级缓存最后一级是redis，缓存加载行为是全局唯一的，也就是说不管有多少台服务器，同时只有一个服务器在刷新，这是通过tryLock实现的，目的是为了降低后端的加载负担。 </p>
+</blockquote>
+<pre><code class="java">@CreateCache(name = CACHE_NAME, expire = 5 * 60, localLimit = 10, cacheType = CacheType.LOCAL)
+private Cache&lt;Long, UserVO&gt; userCache;
+
+@PostConstruct
+public void init() {
+    //设置每分钟自动刷新，30分钟不访问就停止自动刷新
+    RefreshPolicy refreshPolicy = RefreshPolicy.newPolicy(1,                    TimeUnit.MINUTES).stopRefreshAfterLastAccess(30,                                     TimeUnit.MINUTES);
+    //放入需要装载自动刷新的方法getUserByIdAndCreateCache()
+    userCache.config().setLoader(this::getUserByIdAndCreateCache);
+    userCache.config().setRefreshPolicy(refreshPolicy);
 }</code></pre>
 
             </div>
