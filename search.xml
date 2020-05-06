@@ -160,7 +160,7 @@ public int deleteUserByIdAndCreateCache(Long userId) {
     }
     return result;
 }</code></pre>
-<pre><code></code></pre>]]></content>
+]]></content>
       <categories>
         <category>缓存</category>
       </categories>
