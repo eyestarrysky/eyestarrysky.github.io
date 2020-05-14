@@ -4,6 +4,35 @@
   
   
   <entry>
+    <title>LeetCode题解-102.二叉树的层序遍历</title>
+    <link href="/2020/05/14/LeetCode%E9%A2%98%E8%A7%A3-102.%E4%BA%8C%E5%8F%89%E6%A0%91%E7%9A%84%E5%B1%82%E5%BA%8F%E9%81%8D%E5%8E%86/"/>
+    <url>/2020/05/14/LeetCode%E9%A2%98%E8%A7%A3-102.%E4%BA%8C%E5%8F%89%E6%A0%91%E7%9A%84%E5%B1%82%E5%BA%8F%E9%81%8D%E5%8E%86/</url>
+    
+    <content type="html"><![CDATA[<h3 id=""><a href="#" class="headerlink" title=""></a></h3><h3 id="102-二叉树的层序遍历"><a href="#102-二叉树的层序遍历" class="headerlink" title="102.二叉树的层序遍历"></a>102.二叉树的层序遍历</h3><ul><li>给你一个二叉树，请你返回其按 层序遍历 得到的节点值。 （即逐层地，从左到右访问所有节点）。</li></ul><pre><code class="markdown">示例：二叉树：[3,9,20,null,null,15,7],    3   / \  9  20    /  \   15   7返回其层次遍历结果：[  [3],  [9,20],  [15,7]]</code></pre><h4 id="深度度优先遍历-DFS"><a href="#深度度优先遍历-DFS" class="headerlink" title="深度度优先遍历-DFS"></a>深度度优先遍历-DFS</h4><pre><code class="java">class Solution {    List&lt;List&lt;Integer&gt;&gt; depthList = new ArrayList&lt;&gt;();    /**     * 解法一: 采用深度优先遍历     * @param root 根节点     * @return List&lt;List&lt;Integer&gt;&gt;     */    public List&lt;List&lt;Integer&gt;&gt; levelOrderUseDFS(TreeNode root) {        if (null == root) {            return depthList;        }        recursive(root, 0);        return depthList;    }    public void recursive(TreeNode node, int depth) {        if (depthList.size() == depth) {            //这里使用链表，不需要扩容            depthList.add(new LinkedList&lt;&gt;());        }        depthList.get(depth).add(node.val);        if (null != node.left) {            recursive(node.left, depth + 1);        }        if (null != node.right) {            recursive(node.right, depth + 1);        }    }}</code></pre><h4 id="广度优先遍历-BFS"><a href="#广度优先遍历-BFS" class="headerlink" title="广度优先遍历-BFS"></a>广度优先遍历-BFS</h4><pre><code class="java">     /**     * 解法二: 采用深度优先遍历     * @param root 根节点     * @return List&lt;List&lt;Integer&gt;&gt;     */    public List&lt;List&lt;Integer&gt;&gt; levelOrderUseBFS(TreeNode root) {        List&lt;List&lt;Integer&gt;&gt; res = new ArrayList&lt;&gt;();        if (null == root) {            return res;        }        Queue&lt;TreeNode&gt; queue = new LinkedList&lt;&gt;();        queue.offer(root);        while (!queue.isEmpty()) {            int size = queue.size();            List&lt;Integer&gt; list = new LinkedList&lt;&gt;();            //内循环取出位于二叉树同一层的元素            for (int i = 0; i &lt; size; i++) {                TreeNode cur = queue.remove();                list.add(cur.val);                if (null != cur.left) {                    queue.add(cur.left);                }                if (null != cur.right) {                    queue.add(cur.right);                }            }            res.add(list);        }        return res;    }</code></pre>]]></content>
+    
+    
+    <categories>
+      
+      <category>LeetCode</category>
+      
+    </categories>
+    
+    
+    <tags>
+      
+      <tag>LeetCode</tag>
+      
+      <tag>数据结构</tag>
+      
+      <tag>算法</tag>
+      
+    </tags>
+    
+  </entry>
+  
+  
+  
+  <entry>
     <title>Hasor DataWay 简化后台开发</title>
     <link href="/2020/05/01/Hasor%20DataWay%20%E7%AE%80%E5%8C%96%E5%90%8E%E5%8F%B0%E5%BC%80%E5%8F%91/"/>
     <url>/2020/05/01/Hasor%20DataWay%20%E7%AE%80%E5%8C%96%E5%90%8E%E5%8F%B0%E5%BC%80%E5%8F%91/</url>
