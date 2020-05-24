@@ -144,6 +144,57 @@
     
     
       <div class="col-12 col-md-4 m-auto">
+        <a href="/2020/05/24/%E6%B8%A9%E6%95%85%E7%9F%A5%E6%96%B0-redis%E8%BF%87%E6%9C%9F%E7%AD%96%E7%95%A5%E5%8F%8A%E5%BA%94%E7%94%A8/" target="_self">
+          <img src="/../image/redis_icon.jpg" alt="温故知新-redis过期策略及应用"
+               class="index-img img-fluid rounded index-thumbnails">
+        </a>
+      </div>
+    
+    <div class="col-12 col-md-8 mx-auto index-info">
+      <a href="/2020/05/24/%E6%B8%A9%E6%95%85%E7%9F%A5%E6%96%B0-redis%E8%BF%87%E6%9C%9F%E7%AD%96%E7%95%A5%E5%8F%8A%E5%BA%94%E7%94%A8/">
+        <p class="h4 index-header">温故知新-redis过期策略及应用</p>
+      </a>
+
+      <a href="/2020/05/24/%E6%B8%A9%E6%95%85%E7%9F%A5%E6%96%B0-redis%E8%BF%87%E6%9C%9F%E7%AD%96%E7%95%A5%E5%8F%8A%E5%BA%94%E7%94%A8/" class="index-excerpt-wrap">
+        
+        
+          
+        
+        <div class="index-excerpt" >
+          <div class="index-text mb-1">前言
+当人们在过五一长假时Redis 6.0悄然发布了，这个版本提供了许多新特性和一些功能上的改进，其中最引入关注的当属“多线程”了。但是，本文先不谈新特性，先对本人学过的redis相关知识及应用做一下回顾，以后抽空会再写一篇我对Redis 6.0的所知所学
+
+Redis的过期策略是什么过期策略
+解答是定期删除 +  惰性删除
+定期删除指的是redis默认每隔100ms就随机抽取一些设置了过期时间的key，检查其是否过期，如果过期就删除
+由于定期删除可能会导致key到过期时间了，没有被随机抽取删除掉，所以有了惰性删除，当使用获取key操作时，redis会检查key是否过期，如果过期了就删除掉不</div>
+        </div>
+      </a>
+
+      <div class="index-btm">
+        
+          <i class="iconfont icon-riqi2"></i>&nbsp;2020-05-24&nbsp;&nbsp;
+        
+        
+          <i class="iconfont icon-inbox"></i>
+          
+            <a href="/categories/redis/">redis</a>&nbsp;
+          &nbsp;
+        
+        
+          <i class="iconfont icon-tag"></i>
+          
+            <a href="/tags/redis/">redis</a>&nbsp;
+          
+        
+      </div>
+    </div>
+  </div>
+
+  <div class="row mx-auto index-card">
+    
+    
+      <div class="col-12 col-md-4 m-auto">
         <a href="/2020/05/14/LeetCode%E9%A2%98%E8%A7%A3-102.%E4%BA%8C%E5%8F%89%E6%A0%91%E7%9A%84%E5%B1%82%E5%BA%8F%E9%81%8D%E5%8E%86/" target="_self">
           <img src="/../image/leetcode.jpg" alt="LeetCode题解-102.二叉树的层序遍历"
                class="index-img img-fluid rounded index-thumbnails">
