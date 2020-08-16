@@ -1,177 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>利用github和hexo快速搭建个人博客</title>
-    <url>/2020/04/17/%E5%88%A9%E7%94%A8github%E5%92%8Chexo%E5%BF%AB%E9%80%9F%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/</url>
-    <content><![CDATA[<h3 id="一、准备工作"><a href="#一、准备工作" class="headerlink" title="一、准备工作"></a>一、准备工作</h3><h4 id="安装git"><a href="#安装git" class="headerlink" title="安装git"></a>安装git</h4><p><code>git</code>下载地址：<code>http://gitforwindows.org</code></p>
-<h4 id="安装node-js"><a href="#安装node-js" class="headerlink" title="安装node.js"></a>安装node.js</h4><p> <code>node.js</code> 下载地址：<code>http://nodejs.org/en/</code> </p>
-<h3 id="二、本地搭建"><a href="#二、本地搭建" class="headerlink" title="二、本地搭建"></a>二、本地搭建</h3><ul>
-<li><p>选择一个文件夹建一个目录<code>blog</code>存放博客相关文件，文件夹内右键打开<code>git bash here</code>，在窗口中执行以下所有命令</p>
-</li>
-<li><p>用<code>npm</code>安装<code>hexo</code>，由于国内网络高“墙”深院，避免安装缓慢或失败，这里切换阿里的<code>NPM</code>镜像，没办法只能采用迂回战术了。</p>
-</li>
-</ul>
-<pre><code class="sh">$ npm install -g cnpm --registry=http://registry.npm.taobao.org</code></pre>
-<p>用 <code>cnpm</code> 安装 <code>hexo</code></p>
-<pre><code class="sh">$ cnpm install -g hexo-cli
-$ cnpm install hexo --save
-##检查hexo是否安装成功
-$ hexo -v</code></pre>
-<ul>
-<li>在<code>blog</code>文件夹建一个<code>hexo</code>文件存放博客，进入也打开<code>git bash here</code></li>
-</ul>
-<pre><code class="sh">$ hexo init</code></pre>
-<p>初始化成功后，<code>hexo文件</code>夹内会出现如下的文件：</p>
-<p><code>node_modules</code>: 依赖包<br><code>public</code>：存放生成的页面<br><code>scaffolds</code>：生成文章的一些模板<br><code>source</code>：用来存放你的文章<br><code>themes</code>：放下下载的主题<br><code>_config.yml:</code> 博客的核心配置文件（设置主体、标题等属性）</p>
-<ul>
-<li><p>接着需要执行一下<code>cnpm install</code>命令，要不下边的启动会提示命令不合法。</p>
-</li>
-<li><p>最后使用<code>hexo s -g</code>启动安装好的<code>hexo</code></p>
-</li>
-</ul>
-<h3 id="三、托管至GitHub"><a href="#三、托管至GitHub" class="headerlink" title="三、托管至GitHub"></a>三、托管至GitHub</h3><ul>
-<li><p>建立一个仓库，名称为<code>xxx.github.io</code></p>
-</li>
-<li><p>配置<code>_config.xml</code>文件，添加<code>GitHub</code>地址</p>
-</li>
-</ul>
-<pre><code class="yml">deploy:
-  type: git
-  repo: https://github.com/xxx/xxx.github.io.git
-  branch: master</code></pre>
-<ul>
-<li>安装部署命令<code>deploy-git</code> ，这样你才能用命令部署到<code>GitHub</code></li>
-</ul>
-<pre><code class="sh">$ cnpm install hexo-deployer-git  --save</code></pre>
-<ul>
-<li>安装好后，依次执行下列命令，提交本地<code>hexo</code>文件到<code>GitHub</code></li>
-</ul>
-<pre><code class="sh">$ hexo clean
-$ hexo generate
-$ hexo deploy</code></pre>
-<ul>
-<li>最后访问<code>https://xxx.github.io.git</code>即可</li>
-</ul>
-<h3 id="四、选择自己喜欢的主题"><a href="#四、选择自己喜欢的主题" class="headerlink" title="四、选择自己喜欢的主题"></a>四、选择自己喜欢的主题</h3><ul>
-<li><p>到<code>http://hexo.io/themes/</code>下载主题，<code>git clone</code>到本地</p>
-<p><code>git clone https://github.com/iissnan/hexo-theme-next</code></p>
-</li>
-<li><p>修改<code>hexo</code>文件夹下的<code>_config.yml</code>文件中的<code>theme</code>属性</p>
-</li>
-</ul>
-<pre><code class="yml">theme: hexo-theme-next</code></pre>
-<ul>
-<li>再次打包上传即可<pre><code class="sh">$ hexo clean
-$ hexo generate
-$ hexo deploy</code></pre>
-</li>
-</ul>
-<h3 id="五、Hexo基本操作"><a href="#五、Hexo基本操作" class="headerlink" title="五、Hexo基本操作"></a>五、Hexo基本操作</h3><p>博客文章都放在<code>source\_post</code>目录下</p>
-]]></content>
-      <categories>
-        <category>hexo</category>
-        <category>建站</category>
-      </categories>
-      <tags>
-        <tag>建站</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>温故知新-redis过期策略及应用</title>
-    <url>/2020/05/24/%E6%B8%A9%E6%95%85%E7%9F%A5%E6%96%B0-redis%E8%BF%87%E6%9C%9F%E7%AD%96%E7%95%A5%E5%8F%8A%E5%BA%94%E7%94%A8/</url>
-    <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><ul>
-<li>当人们在过五一长假时<code>Redis 6.0</code>悄然发布了，这个版本提供了许多新特性和一些功能上的改进，其中最引入关注的当属“多线程”了。但是，本文先不谈新特性，先对本人学过的<code>redis</code>相关知识及应用做一下回顾，以后抽空会再写一篇我对<code>Redis 6.0</code>的所知所学</li>
-</ul>
-<h3 id="Redis的过期策略是什么"><a href="#Redis的过期策略是什么" class="headerlink" title="Redis的过期策略是什么"></a>Redis的过期策略是什么</h3><h4 id="过期策略"><a href="#过期策略" class="headerlink" title="过期策略"></a>过期策略</h4><ul>
-<li>解答是<code>定期删除</code> +  <code>惰性删除</code><ul>
-<li><code>定期删除</code>指的是<code>redis</code>默认每隔<code>100ms</code>就随机抽取一些设置了过期时间的key，检查其是否过期，如果过期就删除</li>
-<li>由于定期删除可能会导致key到过期时间了，没有被随机抽取删除掉，所以有了<code>惰性删除</code>，当使用获取key操作时，<code>redis</code>会检查key是否过期，如果过期了就删除掉不会返回任何东西</li>
-</ul>
-</li>
-</ul>
-<p><strong>但是如果某个key一直没有获取操作或者被定期删除随机抽取到，那么也会堆积大量key在内存里，所以有了内存淘汰机制</strong></p>
-<h4 id="内存淘汰机制"><a href="#内存淘汰机制" class="headerlink" title="内存淘汰机制"></a>内存淘汰机制</h4><p><strong>redis 内存淘汰机制有以下几个：</strong></p>
-<ul>
-<li><code>noeviction</code>: 当内存不足以容纳新写入数据时，新写入操作会报错，这个一般没人用吧，实在是太恶心了。</li>
-<li><code>allkeys-lru</code>：当内存不足以容纳新写入数据时，在键空间中，移除最近最少使用的 key（这个是最常用的）。</li>
-<li><code>allkeys-random</code>：当内存不足以容纳新写入数据时，在键空间中，随机移除某个 key，这个一般没人用吧，为啥要随机，肯定是把最近最少使用的 key 给干掉啊。</li>
-<li><code>volatile-lru</code>：当内存不足以容纳新写入数据时，在设置了过期时间的键空间中，移除最近最少使用的 key（这个一般不太合适）。</li>
-<li><code>volatile-random</code>：当内存不足以容纳新写入数据时，在设置了过期时间的键空间中，随机移除某个 key。</li>
-<li><code>volatile-ttl</code>：当内存不足以容纳新写入数据时，在设置了过期时间的键空间中，有更早过期时间的 key 优先移除。</li>
-</ul>
-<h3 id="实战演练"><a href="#实战演练" class="headerlink" title="实战演练"></a>实战演练</h3><blockquote>
-<p>我在公司负责过一个直播项目，主播会提前预约一个直播间，然后把直播间通过社交软件分享出去吸引流量；如果预约时间过了10分钟还没有来开播，那么会删除直播间 + 七牛直播云关闭<code>Stream</code> + <code>imId</code>（当然，到了预约时间提前10分钟会push给主播提醒他开播，这些跟本文无关就不提了 )。</p>
-</blockquote>
-<h4 id="解决方案选择"><a href="#解决方案选择" class="headerlink" title="解决方案选择"></a>解决方案选择</h4><ol>
-<li>使用<code>MQ</code>的延时消息来做，但是当时研究发现<code>RocketMQ</code>只支持指定的延时级别1s, 2s, … , 2h，没办法指定到具体的时间，其实这一点也能想到，RocketMQ作为一个高吞吐，低延时的消息队列，不设计这种具体到指定时间的延时消息也情有可原，因为这样就要在对消息排序上做大量处理，会极大地影响性能。于是 ，此方案不予采用。</li>
-<li>采用定时任务来做，但是这样会很纠结这个定时任务的轮询时间，5分钟1次？2分钟1次？这样也没办法指定到具体时间，思来想去总觉得这个方案不太优雅，嗯，弃用。</li>
-<li>自己实现一个时间轮？嗯，因为之前自己实现过一个时间轮，就拷贝到项目中使用，效果还不错，但是由于任务是放在内存中的，项目一重启，或者其他原因故障会导致任务丢失。这样一来那些空无一人的直播间挂在我们的直播首页也不太美观。于是考虑到要对任务做持久化，嗯，这样复杂度越来越高，而且还要新增业务表；于是乎，此方案也不采用。</li>
-<li>最后是采用监听<code>redis</code> 的key过期事件来处理这个问题：将直播间<code>roomId:</code>做为key前缀，<code>expireTime</code> = 预约开播时间 + 10分钟 - 当前时间。当监听到指定key过期时，调用指定业务方法区处理。这样一来不需要引入额外的中间件，编码复杂度低，处理时间十分精确，完美地解决问题。</li>
-</ol>
-<h4 id="代码示例"><a href="#代码示例" class="headerlink" title="代码示例"></a>代码示例</h4><ul>
-<li><strong><font style="color:red;">注意：需要开启<code>Redis</code> key 过期提醒，在<code>redis.conf</code>中加入<code>notify-keyspace-events Ex</code>配置 </font></strong></li>
-</ul>
-<h5 id="配置类"><a href="#配置类" class="headerlink" title="配置类"></a>配置类</h5><pre><code class="java">@Configuration
-public class RedisConfig {
-
-    @Bean
-    public RedisTemplate&lt;String, Object&gt; redisTemplate(RedisConnectionFactory factory) {
-        RedisTemplate&lt;String, Object&gt; template = new RedisTemplate&lt;&gt;();
-        template.setConnectionFactory(factory);
-        // 设置key的序列化方式
-        template.setKeySerializer(RedisSerializer.string());
-        // 设置value的序列化方式
-        template.setValueSerializer(RedisSerializer.json());
-        // 设置hash的key的序列化方式
-        template.setHashKeySerializer(RedisSerializer.string());
-        // 设置hash的value的序列化方式
-        template.setHashValueSerializer(RedisSerializer.json());
-        template.afterPropertiesSet();
-        return template;
-    }
-
-    /**
-     * 将redis消息监听器注册为一个bean
-     * @param connectionFactory 链接工厂
-     * @return RedisMessageListenerContainer
-     */
-    @Bean
-    public RedisMessageListenerContainer container(RedisConnectionFactory connectionFactory) {
-        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
-        container.setConnectionFactory(connectionFactory);
-        return container;
-    }
-}</code></pre>
-<h5 id="key过期监听类"><a href="#key过期监听类" class="headerlink" title="key过期监听类"></a>key过期监听类</h5><pre><code class="java">@Slf4j
-@Component
-public class RedisKeyExpirationListener extends KeyExpirationEventMessageListener {
-
-    public RedisKeyExpirationListener(RedisMessageListenerContainer listenerContainer) {
-        super(listenerContainer);
-    }
-
-    @Override
-    public void onMessage(Message message, byte[] pattern) {
-        //获取失效的key, 进行对应的业务处理
-        String expiredKey = message.toString();
-        //取redis前缀符合的进行乡音处理
-        if (expiredKey.startsWith(RedisKeyConstant.LIVE_ROOM_CLOSE)) {
-            log.info(&quot;【这里进行对应的业务处理】, 业务key = {}过期&quot;, expiredKey);
-        }
-    }
-}</code></pre>
-<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><blockquote>
-<p>​        其实，我这里的实战演练中的业务对时间点选择不是那么敏感，采用定时任务去处理，稍微晚那么几分钟关闭过期未及时开播的直播间也未尝不可，只是我个人是觉得监听redis key过期的方案更优雅，实现也简单罢了。其实这种方案适合很多种场景，比如订单30分钟超时未支付取消订单也非常适合使用。在未来我也会对自己所知所学多做总结，希望能做到温故知新，在日常学习中提升技术广度，在工作中践行技术深度，自我勉励！</p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>redis</category>
-      </categories>
-      <tags>
-        <tag>redis</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Hasor DataWay 简化后台开发</title>
     <url>/2020/05/01/Hasor%20DataWay%20%E7%AE%80%E5%8C%96%E5%90%8E%E5%8F%B0%E5%BC%80%E5%8F%91/</url>
     <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><blockquote>
@@ -335,6 +164,372 @@ public class DatawayApplication {
       </categories>
       <tags>
         <tag>DataQL</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Keepalived软件架构</title>
+    <url>/2020/08/16/keepalived%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/</url>
+    <content><![CDATA[<h3 id="理论介绍"><a href="#理论介绍" class="headerlink" title="理论介绍"></a>理论介绍</h3><h4 id="Keepalived的简介"><a href="#Keepalived的简介" class="headerlink" title="Keepalived的简介"></a>Keepalived的简介</h4><p>​        <code>Keepalived</code>软件起初是专为<code>LVS</code>负载均衡软件设计的，用来管理并监控<code>LVS</code>集群系统中各个服务节点的状态，后来又加入了可以实现高可用的<code>VRRP</code>功能。因此，<code>Keepalived</code>除了能够管理<code>LVS</code>软件外，还可以作为其他服务（例如：<code>Nginx、Haproxy、MySQL</code>等）的高可用解决方案软件。</p>
+<p>　　<code>Keepalived</code>软件主要是通过<code>VRRP</code>协议实现高可用功能的。<code>VRRP</code>是<code>Virtual Router RedundancyProtocol</code>(虚拟路由器冗余协议）的缩写，<code>VRRP</code>出现的目的就是为了解决静态路由单点故障问题的，它能够保证当个别节点宕机时，整个网络可以不间断地运行。</p>
+<p>​        <strong>所以，<code>Keepalived</code> 一方面具有配置管理<code>LVS</code>的功能，同时还具有对<code>LVS</code>下面节点进行健康检查的功能，另一方面也可实现系统网络服务的高可用功能。</strong></p>
+<h4 id="keepalived高可用故障切换转移原理"><a href="#keepalived高可用故障切换转移原理" class="headerlink" title="keepalived高可用故障切换转移原理"></a>keepalived高可用故障切换转移原理</h4><blockquote>
+<p>​        <code>Keepalived</code>高可用服务对之间的故障切换转移，是通过<code>VRRP (Virtual Router Redundancy Protocol,虚拟路由器冗余协议）</code>来实现的。</p>
+</blockquote>
+<p>　　<strong>在 <code>Keepalived</code>服务正常工作时，主 Master节点会不断地向备节点发送（多播的方式）心跳消息，用以告诉备Backup节点自己还活看，当主 Master节点发生故障时，就无法发送心跳消息，备节点也就因此无法继续检测到来自主 Master节点的心跳了，于是调用自身的接管程序，接管主Master节点的 IP资源及服务。而当主 Master节点恢复时，备Backup节点又会释放主节点故障时自身接管的IP资源及服务，恢复到原来的备用角色。</strong></p>
+<h4 id="什么是VRRP"><a href="#什么是VRRP" class="headerlink" title="什么是VRRP"></a>什么是VRRP</h4><ol>
+<li>VRRP,全称 Virtual Router Redundancy Protocol,中文名为虚拟路由冗余协议，VRRP的出现是为了解决静态路由的单点故障。 </li>
+<li>VRRP是通过一种竟选协议机制来将路由任务交给某台 VRRP路由器的。 </li>
+<li>VRRP用 IP多播的方式（默认多播地址（224.0_0.18))实现高可用对之间通信。 </li>
+<li>工作时主节点发包，备节点接包，当备节点接收不到主节点发的数据包的时候，就启动接管程序接管主节点的开源。备节点可以有多个，通过优先级竞选，但一般 Keepalived系统运维工作中都是一对。 </li>
+<li>VRRP使用了加密协议加密数据，但Keepalived官方目前还是推荐用明文的方式配置认证类型和密码。 </li>
+</ol>
+<hr>
+<h4 id="keepalived的工作原理"><a href="#keepalived的工作原理" class="headerlink" title="keepalived的工作原理"></a>keepalived的工作原理</h4><p><img src="http://qiniu.eyestarrysky.top/keepalived%E9%AB%98%E5%8F%AF%E7%94%A8.png" alt=""></p>
+<p>​        <strong>Keepalived高可用对之间是通过 VRRP进行通信的， VRRP是遑过竞选机制来确定主备的，主的优先级高于备，因此，工作时主会优先获得所有的资源，备节点处于等待状态，当主挂了的时候，备节点就会接管主节点的资源，然后顶替主节点对外提供服务。</strong></p>
+<p>　　<strong>在 Keepalived服务对之间，只有作为主的服务器会一直发送 VRRP广播包,告诉备它还活着，此时备不会枪占主，当主不可用时，即备监听不到主发送的广播包时，就会启动相关服务接管资源，保证业务的连续性.接管速度最快可以小于1秒。</strong></p>
+<h3 id="实战演练"><a href="#实战演练" class="headerlink" title="实战演练"></a>实战演练</h3><h4 id="使用Keepalived配置实现虚拟IP在多服务器节点漂移"><a href="#使用Keepalived配置实现虚拟IP在多服务器节点漂移" class="headerlink" title="使用Keepalived配置实现虚拟IP在多服务器节点漂移"></a>使用Keepalived配置实现虚拟IP在多服务器节点漂移</h4><ul>
+<li>这里为了节约成本和方便演示，我准备了两台服务器<code>Master 192.168.56.101, Backup 192.168.56.102</code></li>
+</ul>
+<h5 id="安装keepalived及其配置文件结构"><a href="#安装keepalived及其配置文件结构" class="headerlink" title="安装keepalived及其配置文件结构"></a>安装keepalived及其配置文件结构</h5><pre><code class="shell"># 服务器上安装keepalived
+[root@localhost ~]# yum install keepalived -y
+
+# 查看安装目录
+[root@localhost ~]# rpm -ql keepalived
+/etc/keepalived
+/etc/keepalived/keepalived.conf (主配置文件)
+/etc/sysconfig/keepalived
+/usr/bin/genhash
+/usr/lib/systemd/system/keepalived.service
+/usr/libexec/keepalived
+/usr/sbin/keepalived
+/usr/share/doc/keepalived-1.3.5
+................
+
+# 查看配置文件
+[root@localhost ~]# cat /etc/keepalived/keepalived.conf 
+! Configuration File for keepalived
+
+# 全局配置
+global_defs {
+   # 邮箱地址
+   notification_email {
+     acassen@firewall.loc
+     failover@firewall.loc
+     sysadmin@firewall.loc
+   }
+   notification_email_from Alexandre.Cassen@firewall.loc
+   smtp_server 192.168.200.1
+   smtp_connect_timeout 30
+   # 路由id
+   router_id LVS_DEVEL
+   vrrp_skip_check_adv_addr
+   # 严格的vrrp，建议关掉
+#   vrrp_strict
+#   vrrp_garp_interval 0
+#  vrrp_gna_interval 0
+}
+
+# vrrp实例 （名称随意换)
+vrrp_instance VI_1 {
+    # 说明实例为master节点
+    state MASTER
+    # 指定的网卡名称
+    interface eth0
+    virtual_router_id 51
+    # 优先值，越大则故障转移时被选中顶替master的几率越大
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    # 虚拟ip地址
+    virtual_ipaddress {
+        192.168.200.16
+        192.168.200.17
+        192.168.200.18
+    }
+}</code></pre>
+<h5 id="Master节点配置"><a href="#Master节点配置" class="headerlink" title="Master节点配置"></a>Master节点配置</h5><pre><code class="shell">global_defs {
+   notification_email {
+     12345678@qq.com
+   }
+   notification_email_from 188275291160@163.com
+   smtp_server 192.168.56.1
+   smtp_connect_timeout 30
+   router_id Nginx
+ # vrrp_skip_check_adv_addr
+ # vrrp_strict
+ # vrrp_garp_interval 0
+ # vrrp_gna_interval 0
+}
+
+vrrp_instance Nginx_1 {
+    state MASTER
+    # 网卡配置 ifconfig查看
+    interface enp0s3
+    virtual_router_id 51
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        192.168.56.103
+    }
+}</code></pre>
+<h5 id="Backup节点配置"><a href="#Backup节点配置" class="headerlink" title="Backup节点配置"></a>Backup节点配置</h5><pre><code class="shell">! Configuration File for keepalived
+
+global_defs {
+   notification_email {
+     12345678@qq.com
+   }
+   notification_email_from 188275291160@163.com
+   smtp_server 192.168.56.1
+   smtp_connect_timeout 30
+   router_id Nginx
+ # vrrp_skip_check_adv_addr
+ # vrrp_strict
+ # vrrp_garp_interval 0
+ # vrrp_gna_interval 0
+}
+
+# vrrp实例名要与Master一样
+vrrp_instance Nginx_1 {
+    state BACKUP
+    interface enp0s3
+  # router_id与master保持一样，说明是同一个vrrp instance
+    virtual_router_id 51
+  # 优先级比master低  
+    priority 98
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        192.168.56.103
+    }
+}</code></pre>
+<h5 id="启动Master-keepalived"><a href="#启动Master-keepalived" class="headerlink" title="启动Master keepalived"></a>启动Master keepalived</h5><pre><code class="shell">[root@localhost keepalived]# systemctl start keepalived
+[root@localhost keepalived]# tail -f /var/log/messages
+Aug 15 02:57:08 localhost Keepalived[14810]: Starting VRRP child process, pid=14812
+Aug 15 02:57:08 localhost Keepalived_healthcheckers[14811]: Opening file &#39;/etc/keepalived/keepalived.conf&#39;.
+Aug 15 02:57:08 localhost Keepalived_vrrp[14812]: Registering Kernel netlink reflector
+Aug 15 02:57:08 localhost Keepalived_vrrp[14812]: Registering Kernel netlink command channel
+Aug 15 02:57:08 localhost Keepalived_vrrp[14812]: Registering gratuitous ARP shared channel
+Aug 15 02:57:08 localhost Keepalived_vrrp[14812]: Opening file &#39;/etc/keepalived/keepalived.conf&#39;.
+Aug 15 02:57:08 localhost Keepalived_vrrp[14812]: VRRP_Instance(Nginx_1) removing protocol VIPs.
+Aug 15 02:57:08 localhost Keepalived_vrrp[14812]: Using LinkWatch kernel netlink reflector...
+Aug 15 02:57:08 localhost Keepalived_vrrp[14812]: VRRP sockpool: [ifindex(2), proto(112), unicast(0), fd(10,11)]
+Aug 15 02:57:09 localhost Keepalived_vrrp[14812]: VRRP_Instance(Nginx_1) Transition to MASTER STATE
+Aug 15 02:57:10 localhost Keepalived_vrrp[14812]: VRRP_Instance(Nginx_1) Entering MASTER STATE
+Aug 15 02:57:10 localhost Keepalived_vrrp[14812]: VRRP_Instance(Nginx_1) setting protocol VIPs.
+Aug 15 02:57:10 localhost Keepalived_vrrp[14812]: Sending gratuitous ARP on enp0s3 for 192.168.56.103
+Aug 15 02:57:10 localhost Keepalived_vrrp[14812]: VRRP_Instance(Nginx_1) Sending/queueing gratuitous ARPs on enp0s3 for 192.168.56.103
+Aug 15 02:57:10 localhost Keepalived_vrrp[14812]: Sending gratuitous ARP on enp0s3 for 192.168.56.103
+Aug 15 02:57:15 localhost Keepalived_vrrp[14812]: VRRP_Instance(Nginx_1) Sending/queueing gratuitous ARPs on enp0s3 for 192.168.56.103
+Aug 15 02:57:15 localhost Keepalived_vrrp[14812]: Sending gratuitous ARP on enp0s3 for 192.168.56.103
+
+# 使用ip a或者ip addr show查看有了192.168.56.103的虚拟ip
+[root@localhost keepalived]# ip a
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:79:dc:34 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.56.101/24 brd 192.168.56.255 scope global noprefixroute dynamic enp0s3
+       valid_lft 999sec preferred_lft 999sec
+    inet 192.168.56.103/32 scope global enp0s3
+       valid_lft forever preferred_lft forever
+    inet6 fe80::b1d0:38ea:6339:11f8/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+
+# ping 发现虚拟ip能够提供服务了
+[root@localhost keepalived]# ping 192.168.56.103
+PING 192.168.56.103 (192.168.56.103) 56(84) bytes of data.
+64 bytes from 192.168.56.103: icmp_seq=1 ttl=64 time=0.082 ms
+64 bytes from 192.168.56.103: icmp_seq=2 ttl=64 time=0.035 ms
+64 bytes from 192.168.56.103: icmp_seq=3 ttl=64 time=0.036 ms
+64 bytes from 192.168.56.103: icmp_seq=4 ttl=64 time=0.037 ms
+64 bytes from 192.168.56.103: icmp_seq=5 ttl=64 time=0.072 ms
+64 bytes from 192.168.56.103: icmp_seq=6 ttl=64 time=0.036
+</code></pre>
+<h5 id="启动Backup-keepalived"><a href="#启动Backup-keepalived" class="headerlink" title="启动Backup keepalived"></a>启动Backup keepalived</h5><pre><code class="shell"># VRRP_Instance(Nginx_1) Entering BACKUP STATE
+[root@localhost keepalived]# tail -f /var/log/messages
+Aug 15 03:03:53 localhost Keepalived_healthcheckers[13529]: Opening file &#39;/etc/keepalived/keepalived.conf&#39;.
+Aug 15 03:03:53 localhost Keepalived[13528]: Starting VRRP child process, pid=13530
+Aug 15 03:03:53 localhost Keepalived_vrrp[13530]: Registering Kernel netlink reflector
+Aug 15 03:03:53 localhost Keepalived_vrrp[13530]: Registering Kernel netlink command channel
+Aug 15 03:03:53 localhost Keepalived_vrrp[13530]: Registering gratuitous ARP shared channel
+Aug 15 03:03:53 localhost Keepalived_vrrp[13530]: Opening file &#39;/etc/keepalived/keepalived.conf&#39;.
+Aug 15 03:03:53 localhost Keepalived_vrrp[13530]: VRRP_Instance(Nginx_1) removing protocol VIPs.
+Aug 15 03:03:53 localhost Keepalived_vrrp[13530]: Using LinkWatch kernel netlink reflector...
+Aug 15 03:03:53 localhost Keepalived_vrrp[13530]: VRRP_Instance(Nginx_1) Entering BACKUP STATE
+Aug 15 03:03:53 localhost Keepalived_vrrp[13530]: VRRP sockpool: [ifindex(2), proto(112), unicast(0), fd(10,11)]
+
+# 当master正常访问时，虚拟ip只会在master上，否则由backup顶上
+[root@localhost keepalived]# ip a
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: enp0s3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:b3:b2:ab brd ff:ff:ff:ff:ff:ff
+    inet 192.168.56.102/24 brd 192.168.56.255 scope global noprefixroute dynamic enp0s3
+       valid_lft 807sec preferred_lft 807sec
+    inet6 fe80::3ddc:9a9a:23b5:44b5/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+
+</code></pre>
+<h5 id="模拟Master宕机-恢复试验"><a href="#模拟Master宕机-恢复试验" class="headerlink" title="模拟Master宕机-恢复试验"></a>模拟Master宕机-恢复试验</h5><pre><code class="shell"># master重启, 或systemctl stop keepalived模拟宕机
+[root@localhost ~]# reboot
+
+# 查看backup日志，发现backup服务器进入MASTER STATE，同时绑定虚拟ip 192.168.56.103
+[root@localhost ~]# tail -f /var/log/messages
+Aug 15 20:38:09 localhost Keepalived_vrrp[13605]: VRRP_Instance(Nginx_1) Transition to MASTER STATE
+Aug 15 20:38:10 localhost Keepalived_vrrp[13605]: VRRP_Instance(Nginx_1) Entering MASTER STATE
+Aug 15 20:38:10 localhost Keepalived_vrrp[13605]: VRRP_Instance(Nginx_1) setting protocol VIPs.
+Aug 15 20:38:10 localhost Keepalived_vrrp[13605]: Sending gratuitous ARP on enp0s3 for 192.168.56.103
+Aug 15 20:38:10 localhost Keepalived_vrrp[13605]: VRRP_Instance(Nginx_1) Sending/queueing gratuitous ARPs on enp0s3 for 192.168.56.103
+Aug 15 20:38:10 localhost Keepalived_vrrp[13605]: Sending gratuitous ARP on enp0s3 for 192.168.56.103
+
+# 当原先的MASTER恢复后，查看日志，发现收到广播信息，另一台服务器优先级为100，再次恢复成Backup，同时removing protocols VIPs;
+[root@localhost ~]# tail -f /var/log/messages
+Aug 15 20:42:37 localhost Keepalived_vrrp[13605]: VRRP_Instance(Nginx_1) Received advert with higher priority 100, ours 98
+Aug 15 20:42:37 localhost Keepalived_vrrp[13605]: VRRP_Instance(Nginx_1) Entering BACKUP STATE
+Aug 15 20:42:37 localhost Keepalived_vrrp[13605]: VRRP_Instance(Nginx_1) removing protocol VIPs.
+</code></pre>
+<h4 id="如何修改keepalived日志存放位置"><a href="#如何修改keepalived日志存放位置" class="headerlink" title="如何修改keepalived日志存放位置"></a>如何修改keepalived日志存放位置</h4><pre><code class="shell">[root@localhost ~]# vim /etc/sysconfig/keepalived 
+# Options for keepalived. See `keepalived --help&#39; output and keepalived(8) and
+# keepalived.conf(5) man pages for a list of all options. Here are the most
+# common ones :
+#
+# --vrrp               -P    Only run with VRRP subsystem.
+# --check              -C    Only run with Health-checker subsystem.
+# --dont-release-vrrp  -V    Dont remove VRRP VIPs &amp; VROUTEs on daemon stop.
+# --dont-release-ipvs  -I    Dont remove IPVS topology on daemon stop.
+# --dump-conf          -d    Dump the configuration data.
+# --log-detail         -D    Detailed log messages.
+# --log-facility       -S    0-7 Set local syslog facility (default=LOG_DAEMON)
+#
+
+# 默认的KEEPALIVED_OPTIONS=&quot;-D&quot;
+KEEPALIVED_OPTIONS=&quot;-D -d -S 0&quot;
+
+[root@localhost ~]# vim /etc/rsyslog.conf 
+# Save boot messages also to boot.log
+local7.*                                                /var/log/boot.log
+  # 增加这一行配置
+local0.*                                             /usr/local/nginx/logs/keepalived.log
+
+[root@localhost ~]# systemctl restart rsyslog
+[root@localhost ~]# systemctl restart keepalived</code></pre>
+<h4 id="Keepalived-Nginx高可用原理"><a href="#Keepalived-Nginx高可用原理" class="headerlink" title="Keepalived + Nginx高可用原理"></a><code>Keepalived + Nginx</code>高可用原理</h4><ul>
+<li>关键点在于，如何使得keepalived知道nginx宕机了。可以写一个脚本监控nginx进程，如果nginx挂了，触发kill掉keepalived，使得VIPs转移到别的服务器，从而实现服务高可用。</li>
+</ul>
+<pre><code class="shell">[root@localhost shell]# vim nginx_health_check.sh
+#!/bin/bash
+#
+
+ps -ef | grep nginx | grep -v grep &amp;&gt; /dev/null
+# $?不为0（nginx未启动时为0）时杀掉keepalived进程
+if [ $? -ne 0]; then
+    killall keepalived
+fi
+
+# 利用$?（获取上一个命令的退出状态，或者上一个函数的返回值。）, nginx未启动时ps -ef | grep nginx | grep -v grep &amp;&gt; /dev/null 返回1，否则返回0
+[root@localhost shell]# ps -ef | grep nginx | grep -v grep &amp;&gt; /dev/null
+[root@localhost shell]# echo $?
+1</code></pre>
+]]></content>
+      <categories>
+        <category>keepalived</category>
+      </categories>
+      <tags>
+        <tag>keepalived</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>利用github和hexo快速搭建个人博客</title>
+    <url>/2020/04/17/%E5%88%A9%E7%94%A8github%E5%92%8Chexo%E5%BF%AB%E9%80%9F%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/</url>
+    <content><![CDATA[<h3 id="一、准备工作"><a href="#一、准备工作" class="headerlink" title="一、准备工作"></a>一、准备工作</h3><h4 id="安装git"><a href="#安装git" class="headerlink" title="安装git"></a>安装git</h4><p><code>git</code>下载地址：<code>http://gitforwindows.org</code></p>
+<h4 id="安装node-js"><a href="#安装node-js" class="headerlink" title="安装node.js"></a>安装node.js</h4><p> <code>node.js</code> 下载地址：<code>http://nodejs.org/en/</code> </p>
+<h3 id="二、本地搭建"><a href="#二、本地搭建" class="headerlink" title="二、本地搭建"></a>二、本地搭建</h3><ul>
+<li><p>选择一个文件夹建一个目录<code>blog</code>存放博客相关文件，文件夹内右键打开<code>git bash here</code>，在窗口中执行以下所有命令</p>
+</li>
+<li><p>用<code>npm</code>安装<code>hexo</code>，由于国内网络高“墙”深院，避免安装缓慢或失败，这里切换阿里的<code>NPM</code>镜像，没办法只能采用迂回战术了。</p>
+</li>
+</ul>
+<pre><code class="sh">$ npm install -g cnpm --registry=http://registry.npm.taobao.org</code></pre>
+<p>用 <code>cnpm</code> 安装 <code>hexo</code></p>
+<pre><code class="sh">$ cnpm install -g hexo-cli
+$ cnpm install hexo --save
+##检查hexo是否安装成功
+$ hexo -v</code></pre>
+<ul>
+<li>在<code>blog</code>文件夹建一个<code>hexo</code>文件存放博客，进入也打开<code>git bash here</code></li>
+</ul>
+<pre><code class="sh">$ hexo init</code></pre>
+<p>初始化成功后，<code>hexo文件</code>夹内会出现如下的文件：</p>
+<p><code>node_modules</code>: 依赖包<br><code>public</code>：存放生成的页面<br><code>scaffolds</code>：生成文章的一些模板<br><code>source</code>：用来存放你的文章<br><code>themes</code>：放下下载的主题<br><code>_config.yml:</code> 博客的核心配置文件（设置主体、标题等属性）</p>
+<ul>
+<li><p>接着需要执行一下<code>cnpm install</code>命令，要不下边的启动会提示命令不合法。</p>
+</li>
+<li><p>最后使用<code>hexo s -g</code>启动安装好的<code>hexo</code></p>
+</li>
+</ul>
+<h3 id="三、托管至GitHub"><a href="#三、托管至GitHub" class="headerlink" title="三、托管至GitHub"></a>三、托管至GitHub</h3><ul>
+<li><p>建立一个仓库，名称为<code>xxx.github.io</code></p>
+</li>
+<li><p>配置<code>_config.xml</code>文件，添加<code>GitHub</code>地址</p>
+</li>
+</ul>
+<pre><code class="yml">deploy:
+  type: git
+  repo: https://github.com/xxx/xxx.github.io.git
+  branch: master</code></pre>
+<ul>
+<li>安装部署命令<code>deploy-git</code> ，这样你才能用命令部署到<code>GitHub</code></li>
+</ul>
+<pre><code class="sh">$ cnpm install hexo-deployer-git  --save</code></pre>
+<ul>
+<li>安装好后，依次执行下列命令，提交本地<code>hexo</code>文件到<code>GitHub</code></li>
+</ul>
+<pre><code class="sh">$ hexo clean
+$ hexo generate
+$ hexo deploy</code></pre>
+<ul>
+<li>最后访问<code>https://xxx.github.io.git</code>即可</li>
+</ul>
+<h3 id="四、选择自己喜欢的主题"><a href="#四、选择自己喜欢的主题" class="headerlink" title="四、选择自己喜欢的主题"></a>四、选择自己喜欢的主题</h3><ul>
+<li><p>到<code>http://hexo.io/themes/</code>下载主题，<code>git clone</code>到本地</p>
+<p><code>git clone https://github.com/iissnan/hexo-theme-next</code></p>
+</li>
+<li><p>修改<code>hexo</code>文件夹下的<code>_config.yml</code>文件中的<code>theme</code>属性</p>
+</li>
+</ul>
+<pre><code class="yml">theme: hexo-theme-next</code></pre>
+<ul>
+<li>再次打包上传即可<pre><code class="sh">$ hexo clean
+$ hexo generate
+$ hexo deploy</code></pre>
+</li>
+</ul>
+<h3 id="五、Hexo基本操作"><a href="#五、Hexo基本操作" class="headerlink" title="五、Hexo基本操作"></a>五、Hexo基本操作</h3><p>博客文章都放在<code>source\_post</code>目录下</p>
+]]></content>
+      <categories>
+        <category>hexo</category>
+        <category>建站</category>
+      </categories>
+      <tags>
+        <tag>建站</tag>
       </tags>
   </entry>
   <entry>
@@ -595,6 +790,101 @@ public int deleteUserByIdAndCreateCache(Long userId) {
         <tag>LeetCode</tag>
         <tag>数据结构</tag>
         <tag>算法</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>温故知新-redis过期策略及应用</title>
+    <url>/2020/05/24/%E6%B8%A9%E6%95%85%E7%9F%A5%E6%96%B0-redis%E8%BF%87%E6%9C%9F%E7%AD%96%E7%95%A5%E5%8F%8A%E5%BA%94%E7%94%A8/</url>
+    <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><ul>
+<li>当人们在过五一长假时<code>Redis 6.0</code>悄然发布了，这个版本提供了许多新特性和一些功能上的改进，其中最引入关注的当属“多线程”了。但是，本文先不谈新特性，先对本人学过的<code>redis</code>相关知识及应用做一下回顾，以后抽空会再写一篇我对<code>Redis 6.0</code>的所知所学</li>
+</ul>
+<h3 id="Redis的过期策略是什么"><a href="#Redis的过期策略是什么" class="headerlink" title="Redis的过期策略是什么"></a>Redis的过期策略是什么</h3><h4 id="过期策略"><a href="#过期策略" class="headerlink" title="过期策略"></a>过期策略</h4><ul>
+<li>解答是<code>定期删除</code> +  <code>惰性删除</code><ul>
+<li><code>定期删除</code>指的是<code>redis</code>默认每隔<code>100ms</code>就随机抽取一些设置了过期时间的key，检查其是否过期，如果过期就删除</li>
+<li>由于定期删除可能会导致key到过期时间了，没有被随机抽取删除掉，所以有了<code>惰性删除</code>，当使用获取key操作时，<code>redis</code>会检查key是否过期，如果过期了就删除掉不会返回任何东西</li>
+</ul>
+</li>
+</ul>
+<p><strong>但是如果某个key一直没有获取操作或者被定期删除随机抽取到，那么也会堆积大量key在内存里，所以有了内存淘汰机制</strong></p>
+<h4 id="内存淘汰机制"><a href="#内存淘汰机制" class="headerlink" title="内存淘汰机制"></a>内存淘汰机制</h4><p><strong>redis 内存淘汰机制有以下几个：</strong></p>
+<ul>
+<li><code>noeviction</code>: 当内存不足以容纳新写入数据时，新写入操作会报错，这个一般没人用吧，实在是太恶心了。</li>
+<li><code>allkeys-lru</code>：当内存不足以容纳新写入数据时，在键空间中，移除最近最少使用的 key（这个是最常用的）。</li>
+<li><code>allkeys-random</code>：当内存不足以容纳新写入数据时，在键空间中，随机移除某个 key，这个一般没人用吧，为啥要随机，肯定是把最近最少使用的 key 给干掉啊。</li>
+<li><code>volatile-lru</code>：当内存不足以容纳新写入数据时，在设置了过期时间的键空间中，移除最近最少使用的 key（这个一般不太合适）。</li>
+<li><code>volatile-random</code>：当内存不足以容纳新写入数据时，在设置了过期时间的键空间中，随机移除某个 key。</li>
+<li><code>volatile-ttl</code>：当内存不足以容纳新写入数据时，在设置了过期时间的键空间中，有更早过期时间的 key 优先移除。</li>
+</ul>
+<h3 id="实战演练"><a href="#实战演练" class="headerlink" title="实战演练"></a>实战演练</h3><blockquote>
+<p>我在公司负责过一个直播项目，主播会提前预约一个直播间，然后把直播间通过社交软件分享出去吸引流量；如果预约时间过了10分钟还没有来开播，那么会删除直播间 + 七牛直播云关闭<code>Stream</code> + <code>imId</code>（当然，到了预约时间提前10分钟会push给主播提醒他开播，这些跟本文无关就不提了 )。</p>
+</blockquote>
+<h4 id="解决方案选择"><a href="#解决方案选择" class="headerlink" title="解决方案选择"></a>解决方案选择</h4><ol>
+<li>使用<code>MQ</code>的延时消息来做，但是当时研究发现<code>RocketMQ</code>只支持指定的延时级别1s, 2s, … , 2h，没办法指定到具体的时间，其实这一点也能想到，RocketMQ作为一个高吞吐，低延时的消息队列，不设计这种具体到指定时间的延时消息也情有可原，因为这样就要在对消息排序上做大量处理，会极大地影响性能。于是 ，此方案不予采用。</li>
+<li>采用定时任务来做，但是这样会很纠结这个定时任务的轮询时间，5分钟1次？2分钟1次？这样也没办法指定到具体时间，思来想去总觉得这个方案不太优雅，嗯，弃用。</li>
+<li>自己实现一个时间轮？嗯，因为之前自己实现过一个时间轮，就拷贝到项目中使用，效果还不错，但是由于任务是放在内存中的，项目一重启，或者其他原因故障会导致任务丢失。这样一来那些空无一人的直播间挂在我们的直播首页也不太美观。于是考虑到要对任务做持久化，嗯，这样复杂度越来越高，而且还要新增业务表；于是乎，此方案也不采用。</li>
+<li>最后是采用监听<code>redis</code> 的key过期事件来处理这个问题：将直播间<code>roomId:</code>做为key前缀，<code>expireTime</code> = 预约开播时间 + 10分钟 - 当前时间。当监听到指定key过期时，调用指定业务方法区处理。这样一来不需要引入额外的中间件，编码复杂度低，处理时间十分精确，完美地解决问题。</li>
+</ol>
+<h4 id="代码示例"><a href="#代码示例" class="headerlink" title="代码示例"></a>代码示例</h4><ul>
+<li><strong><font style="color:red;">注意：需要开启<code>Redis</code> key 过期提醒，在<code>redis.conf</code>中加入<code>notify-keyspace-events Ex</code>配置 </font></strong></li>
+</ul>
+<h5 id="配置类"><a href="#配置类" class="headerlink" title="配置类"></a>配置类</h5><pre><code class="java">@Configuration
+public class RedisConfig {
+
+    @Bean
+    public RedisTemplate&lt;String, Object&gt; redisTemplate(RedisConnectionFactory factory) {
+        RedisTemplate&lt;String, Object&gt; template = new RedisTemplate&lt;&gt;();
+        template.setConnectionFactory(factory);
+        // 设置key的序列化方式
+        template.setKeySerializer(RedisSerializer.string());
+        // 设置value的序列化方式
+        template.setValueSerializer(RedisSerializer.json());
+        // 设置hash的key的序列化方式
+        template.setHashKeySerializer(RedisSerializer.string());
+        // 设置hash的value的序列化方式
+        template.setHashValueSerializer(RedisSerializer.json());
+        template.afterPropertiesSet();
+        return template;
+    }
+
+    /**
+     * 将redis消息监听器注册为一个bean
+     * @param connectionFactory 链接工厂
+     * @return RedisMessageListenerContainer
+     */
+    @Bean
+    public RedisMessageListenerContainer container(RedisConnectionFactory connectionFactory) {
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        return container;
+    }
+}</code></pre>
+<h5 id="key过期监听类"><a href="#key过期监听类" class="headerlink" title="key过期监听类"></a>key过期监听类</h5><pre><code class="java">@Slf4j
+@Component
+public class RedisKeyExpirationListener extends KeyExpirationEventMessageListener {
+
+    public RedisKeyExpirationListener(RedisMessageListenerContainer listenerContainer) {
+        super(listenerContainer);
+    }
+
+    @Override
+    public void onMessage(Message message, byte[] pattern) {
+        //获取失效的key, 进行对应的业务处理
+        String expiredKey = message.toString();
+        //取redis前缀符合的进行乡音处理
+        if (expiredKey.startsWith(RedisKeyConstant.LIVE_ROOM_CLOSE)) {
+            log.info(&quot;【这里进行对应的业务处理】, 业务key = {}过期&quot;, expiredKey);
+        }
+    }
+}</code></pre>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><blockquote>
+<p>​        其实，我这里的实战演练中的业务对时间点选择不是那么敏感，采用定时任务去处理，稍微晚那么几分钟关闭过期未及时开播的直播间也未尝不可，只是我个人是觉得监听redis key过期的方案更优雅，实现也简单罢了。其实这种方案适合很多种场景，比如订单30分钟超时未支付取消订单也非常适合使用。在未来我也会对自己所知所学多做总结，希望能做到温故知新，在日常学习中提升技术广度，在工作中践行技术深度，自我勉励！</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>redis</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
       </tags>
   </entry>
 </search>
