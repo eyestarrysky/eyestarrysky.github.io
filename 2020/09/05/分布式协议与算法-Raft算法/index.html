@@ -17,7 +17,7 @@
   <meta name="description" content="">
   <meta name="author" content="eyestarrysky">
   <meta name="keywords" content="">
-  <title>分布式协议与算法 - 眼底星空</title>
+  <title>分布式协议与算法-Raft算法 - 眼底星空</title>
 
   <link  rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/5.12.1/css/all.min.css" />
 <link  rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/css/bootstrap.min.css" />
@@ -235,7 +235,10 @@
 <h5 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h5><ul>
 <li>通过单节点变更解决成员变更出现的极端情况。顾名思义，单节点变更就是通过一次变更一个节点实现成员变更。如果需要变更多个节点，就就行多次单节点变更。</li>
 </ul>
-<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><pre><code> Raft 不是一致性算法而是共识算法，是一个 Multi-Paxos 算法，实现的是如何就一系列值达成共识。并且，Raft 能容忍少数节点的故障。虽然 Raft 算法能实现强一致性，也就是线性一致性（Linearizability），但需要客户端协议的配合。在实际场景中，我们一般需要根据场景特点，在一致性强度和实现复杂度之间进行权衡。比如 Consul 实现了三种一致性模型。</code></pre><ul>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><blockquote>
+<p>Raft 不是一致性算法而是共识算法，是一个 Multi-Paxos 算法，实现的是如何就一系列值达成共识。并且，Raft 能容忍少数节点的故障。虽然 Raft 算法能实现强一致性，也就是线性一致性（Linearizability），但需要客户端协议的配合。在实际场景中，我们一般需要根据场景特点，在一致性强度和实现复杂度之间进行权衡。比如 Consul 实现了三种一致性模型。</p>
+</blockquote>
+<ul>
 <li><p><code>default</code>：客户端访问领导者节点执行读操作，领导者确认自己处于稳定状态时（在 leader leasing 时间内），返回本地数据给客户端，否则返回错误给客户端。在这种情况下，客户端是可能读到旧数据的，比如此时发生了网络分区错误，新领导者已经更新过数据，但因为网络故障，旧领导者未更新数据也未退位，仍处于稳定状态。 </p>
 </li>
 <li><p><code>consistent</code>：客户端访问领导者节点执行读操作，领导者在和大多数节点确认自己仍是领导者之后返回本地数据给客户端，否则返回错误给客户端。在这种情况下，客户端读到的都是最新数据。 </p>
@@ -438,7 +441,7 @@
     var typed = new Typed('#subtitle', {
       strings: [
         '  ',
-        "分布式协议与算法&nbsp;",
+        "分布式协议与算法-Raft算法&nbsp;",
       ],
       cursorChar: "_",
       typeSpeed: 70,

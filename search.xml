@@ -258,175 +258,6 @@ public class DatawayApplication {
       </tags>
   </entry>
   <entry>
-    <title>使用jetcache来操作缓存</title>
-    <url>/2020/04/27/%E4%BD%BF%E7%94%A8jetcache%E6%9D%A5%E6%93%8D%E4%BD%9C%E7%BC%93%E5%AD%98/</url>
-    <content><![CDATA[<h3 id="Jetcache前言"><a href="#Jetcache前言" class="headerlink" title="Jetcache前言"></a>Jetcache前言</h3><ul>
-<li><code>git</code>地址:  <a href="https://github.com/alibaba/jetcache/" target="_blank" rel="noopener">https://github.com/alibaba/jetcache/</a></li>
-</ul>
-<p>​        <strong>因为之前项目的原因接触过jecache，但是没有好好整理，今天闲下来，悉心整理了下，并看了下文档，学了下自动刷新缓存，感觉这个挺适合用来更新首页轮播图，通栏的。</strong></p>
-<h3 id="基本配置（Spring-Boot"><a href="#基本配置（Spring-Boot" class="headerlink" title="基本配置（Spring Boot)"></a>基本配置（Spring Boot)</h3><h4 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h4><h5 id="pom-xml"><a href="#pom-xml" class="headerlink" title="pom.xml"></a>pom.xml</h5><pre><code class="xml">&lt;!-- jetCache  --&gt;
-&lt;dependency&gt;
-    &lt;groupId&gt;com.alicp.jetcache&lt;/groupId&gt;
-    &lt;artifactId&gt;jetcache-starter-redis&lt;/artifactId&gt;
-    &lt;version&gt;2.6.0&lt;/version&gt;
-&lt;/dependency&gt;</code></pre>
-<h5 id="application-yml"><a href="#application-yml" class="headerlink" title="application.yml"></a>application.yml</h5><pre><code class="yml">#jetcache
-# @see com.alicp.jetcache.autoconfigure.JetCacheProperties
-jetcache:
-  # 统计间隔，默认0：表示不统计
-  statIntervalMinutes: 1
-  # areaName是否作为缓存key前缀，默认True
-  areaInCacheName: false
-  local:
-    default:
-      # 已支持可选：linkedhashmap、caffeine
-      type: linkedhashmap
-      # key转换器的全局配置，当前只有：fastjson, @see com.alicp.jetcache.support.FastjsonKeyConvertor
-      keyConvertor: fastjson
-      # 每个缓存实例的最大元素的全局配置，仅local类型的缓存需要指定
-      limit: 100
-      # jetcache2.2以上，以毫秒为单位，指定多长时间没有访问，就让缓存失效，当前只有本地缓存支持。0表示不使用这个功能，指定30秒后失效
-      expireAfterAccessInMillis: 30000
-  remote:
-    default:
-      type: redis
-      keyConvertor: fastjson
-      valueEncoder: java
-      valueDecoder: java
-      poolConfig:
-        minIdle: 5
-        maxIdle: 20
-        maxTotal: 50
-      host: ${redis.host}
-      port: 6379
-      password: ${redis.password}</code></pre>
-<h5 id="启动类"><a href="#启动类" class="headerlink" title="启动类"></a>启动类</h5><pre><code class="java">@SpringBootApplication
-@EnableMethodCache(basePackages = &quot;com.company.mypackagee&quot;)
-@EnableCreateCacheAnnotation
-public class Application extends SpringBootServletInitializer {
-
-    public static void main(String[] args) {
-        SpringApplication.run(Application.class);
-    }
-}</code></pre>
-<h3 id="基本使用"><a href="#基本使用" class="headerlink" title="基本使用"></a>基本使用</h3><ul>
-<li><p>下面例子以操作<code>User</code>为例<br><code>user.java</code></p>
-<pre><code class="java">@TableName(value = &quot;user&quot;)
-@Data
-public class User implements Serializable {
-    private static final long serialVersionUID = 738881519595997996L;
-    /**主键**/
-    @NotNull(message = &quot;主键不能为空&quot;)
-    private Long id;
-    /**姓名**/
-    @NotBlank(message = &quot;名字不能为空&quot;)
-    @Length(min = 1, message = &quot;名字至少1个字&quot;)
-    private String name;
-    /**手机号**/
-    @NotBlank(message = &quot;手机号不能为空&quot;)
-    @Size(max = 11, message = &quot;手机号最长11位&quot;)
-    @Pattern(regexp = &quot;^1\\d+$&quot;, message = &quot;手机号格式不正确&quot;)
-    private String phone;
-    /**电子邮件**/
-    @NotBlank(message = &quot;邮箱不能为空&quot;)
-    @Email(message = &quot;电子邮件格式不正确&quot;)
-    @Length(max = 30, message = &quot;邮箱长度不能超过30!&quot;)
-    private String email;
-    /**自我介绍**/
-    private String aboutme;
-    /**加密密码**/
-    private String passwd;
-    /**头像图片**/
-    private String avatar;
-    /**1:普通用户，2:房产经纪人**/
-    private Integer type;
-    /**创建时间**/
-    private Date createTime;
-    /**是否启用,1启用，0停用**/
-    private Integer enable;
-    /**所属经纪机构**/
-    private Integer agencyId;
-}</code></pre>
-</li>
-</ul>
-<h4 id="基于注解实现方法缓存"><a href="#基于注解实现方法缓存" class="headerlink" title="基于注解实现方法缓存"></a>基于注解实现方法缓存</h4><h5 id="Cached：创建缓存"><a href="#Cached：创建缓存" class="headerlink" title="@Cached：创建缓存"></a>@Cached：创建缓存</h5><pre><code class="java">/**
- * 基于注解创建缓存
- * 缓存在 Remote 的 Redis，也可以配置成 both 开启两级缓存
- */
-@Cached(name = CACHE_NAME, key = &quot;#userId&quot;, cacheType = CacheType.LOCAL, expire = 5 * 60)
-@CacheRefresh(refresh = 60)
-public UserVO findUserById(Long userId) {
-    User user = userMapper.selectOne(queryWrapper);
-    //.....................
-}</code></pre>
-<h5 id="CacheInvalidate：删除缓存"><a href="#CacheInvalidate：删除缓存" class="headerlink" title="@CacheInvalidate：删除缓存"></a>@CacheInvalidate：删除缓存</h5><pre><code class="java">@CacheInvalidate(name = CACHE_NAME, key = &quot;#userId&quot;)
-@Transactional(rollbackFor = Exception.class)
-public int deleteUserById(Long userId) {
-    User user = new User();
-    user.setId(userId);
-    user.setEnable(0);
-    UpdateWrapper&lt;User&gt; updateWrapper = new UpdateWrapper&lt;&gt;();
-    updateWrapper.lambda().eq(User::getId, userId).eq(User::getEnable, 1);
-    return userMapper.update(user, updateWrapper);
-}</code></pre>
-<h5 id="CacheUpdate：更新缓存"><a href="#CacheUpdate：更新缓存" class="headerlink" title="@CacheUpdate：更新缓存"></a>@CacheUpdate：更新缓存</h5><pre><code class="java">/**
- * 更新用户
- * @param user 用户
- * @return int
- */
-@CacheUpdate(name = CACHE_NAME, key = &quot;#user.id&quot;, value = &quot;#user&quot;)
-public int updateUser(User user) {
-    log.info(&quot;【UserUpdate操作】, user = {}&quot;, JSON.toJSONString(user));
-    return userMapper.updateById(user);
-}</code></pre>
-<h4 id="基于-CreateCache注解创建Cache实例"><a href="#基于-CreateCache注解创建Cache实例" class="headerlink" title="基于@CreateCache注解创建Cache实例"></a>基于@CreateCache注解创建Cache实例</h4><h5 id="CreateCache"><a href="#CreateCache" class="headerlink" title="@CreateCache"></a>@CreateCache</h5><pre><code class="java">/**
- * 使用 @CreateCache 注解创建Cache实例;
- * 未定义默认值的参数，将使用yml中指定的全局配置;
- * 缓存在 Local，也可以配置成 both 开启两级缓存
- */
-@CreateCache(name = CACHE_NAME, expire = 5 * 60, localLimit = 10, cacheType = CacheType.LOCAL)
-private Cache&lt;Long, UserVO&gt; userCache;</code></pre>
-<h5 id="查询缓存"><a href="#查询缓存" class="headerlink" title="查询缓存"></a>查询缓存</h5><pre><code class="java">public UserVO getUserByIdAndCreateCache(Long userId) {
-    //根据id从缓存中取
-    UserVO userVO = userCache.get(userId);
-    log.info(&quot;userCreateCache get {} res {}&quot;, userId, userCache);
-    if (Objects.isNull(userVO)) {
-        User user = userMapper.selectById(userId);
-        if (Objects.nonNull(user)) {
-            userVO = new UserVO();
-            BeanUtils.copyProperties(user, userVO);
-            //如果不存在就放入缓存中
-            boolean res = userCache.putIfAbsent(user.getId(), userVO);
-            log.info(&quot;userCreateCache putIfAbsent {} res {}&quot;, userId, res);
-        }
-    }
-    return userVO;
-}</code></pre>
-<h5 id="删除缓存"><a href="#删除缓存" class="headerlink" title="删除缓存"></a>删除缓存</h5><pre><code class="java">@Transactional(rollbackFor = Exception.class)
-public int deleteUserByIdAndCreateCache(Long userId) {
-    User user = new User();
-    UpdateWrapper&lt;User&gt; updateWrapper = new UpdateWrapper&lt;&gt;();
-    updateWrapper.lambda().eq(User::getId, userId).eq(User::getEnable, 1);
-    user.setId(userId);
-    user.setEnable(0);
-    int result = userMapper.update(user, updateWrapper);
-    if (result &gt; 0) {
-        //根据key = userId删除缓存
-        boolean deleteResult = userCache.remove(userId);
-        log.info(&quot;同步删除缓存, userId = {}, res = {}&quot;, userId, deleteResult);
-    }
-    return result;
-}</code></pre>
-]]></content>
-      <categories>
-        <category>缓存</category>
-      </categories>
-      <tags>
-        <tag>jetcache</tag>
-        <tag>缓存</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Keepalived软件架构</title>
     <url>/2020/08/16/keepalived%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/</url>
     <content><![CDATA[<h3 id="理论介绍"><a href="#理论介绍" class="headerlink" title="理论介绍"></a>理论介绍</h3><h4 id="Keepalived的简介"><a href="#Keepalived的简介" class="headerlink" title="Keepalived的简介"></a>Keepalived的简介</h4><p>​        <code>Keepalived</code>软件起初是专为<code>LVS</code>负载均衡软件设计的，用来管理并监控<code>LVS</code>集群系统中各个服务节点的状态，后来又加入了可以实现高可用的<code>VRRP</code>功能。因此，<code>Keepalived</code>除了能够管理<code>LVS</code>软件外，还可以作为其他服务（例如：<code>Nginx、Haproxy、MySQL</code>等）的高可用解决方案软件。</p>
@@ -717,7 +548,176 @@ fi
       </tags>
   </entry>
   <entry>
-    <title>分布式协议与算法</title>
+    <title>使用jetcache来操作缓存</title>
+    <url>/2020/04/27/%E4%BD%BF%E7%94%A8jetcache%E6%9D%A5%E6%93%8D%E4%BD%9C%E7%BC%93%E5%AD%98/</url>
+    <content><![CDATA[<h3 id="Jetcache前言"><a href="#Jetcache前言" class="headerlink" title="Jetcache前言"></a>Jetcache前言</h3><ul>
+<li><code>git</code>地址:  <a href="https://github.com/alibaba/jetcache/" target="_blank" rel="noopener">https://github.com/alibaba/jetcache/</a></li>
+</ul>
+<p>​        <strong>因为之前项目的原因接触过jecache，但是没有好好整理，今天闲下来，悉心整理了下，并看了下文档，学了下自动刷新缓存，感觉这个挺适合用来更新首页轮播图，通栏的。</strong></p>
+<h3 id="基本配置（Spring-Boot"><a href="#基本配置（Spring-Boot" class="headerlink" title="基本配置（Spring Boot)"></a>基本配置（Spring Boot)</h3><h4 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h4><h5 id="pom-xml"><a href="#pom-xml" class="headerlink" title="pom.xml"></a>pom.xml</h5><pre><code class="xml">&lt;!-- jetCache  --&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;com.alicp.jetcache&lt;/groupId&gt;
+    &lt;artifactId&gt;jetcache-starter-redis&lt;/artifactId&gt;
+    &lt;version&gt;2.6.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+<h5 id="application-yml"><a href="#application-yml" class="headerlink" title="application.yml"></a>application.yml</h5><pre><code class="yml">#jetcache
+# @see com.alicp.jetcache.autoconfigure.JetCacheProperties
+jetcache:
+  # 统计间隔，默认0：表示不统计
+  statIntervalMinutes: 1
+  # areaName是否作为缓存key前缀，默认True
+  areaInCacheName: false
+  local:
+    default:
+      # 已支持可选：linkedhashmap、caffeine
+      type: linkedhashmap
+      # key转换器的全局配置，当前只有：fastjson, @see com.alicp.jetcache.support.FastjsonKeyConvertor
+      keyConvertor: fastjson
+      # 每个缓存实例的最大元素的全局配置，仅local类型的缓存需要指定
+      limit: 100
+      # jetcache2.2以上，以毫秒为单位，指定多长时间没有访问，就让缓存失效，当前只有本地缓存支持。0表示不使用这个功能，指定30秒后失效
+      expireAfterAccessInMillis: 30000
+  remote:
+    default:
+      type: redis
+      keyConvertor: fastjson
+      valueEncoder: java
+      valueDecoder: java
+      poolConfig:
+        minIdle: 5
+        maxIdle: 20
+        maxTotal: 50
+      host: ${redis.host}
+      port: 6379
+      password: ${redis.password}</code></pre>
+<h5 id="启动类"><a href="#启动类" class="headerlink" title="启动类"></a>启动类</h5><pre><code class="java">@SpringBootApplication
+@EnableMethodCache(basePackages = &quot;com.company.mypackagee&quot;)
+@EnableCreateCacheAnnotation
+public class Application extends SpringBootServletInitializer {
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class);
+    }
+}</code></pre>
+<h3 id="基本使用"><a href="#基本使用" class="headerlink" title="基本使用"></a>基本使用</h3><ul>
+<li><p>下面例子以操作<code>User</code>为例<br><code>user.java</code></p>
+<pre><code class="java">@TableName(value = &quot;user&quot;)
+@Data
+public class User implements Serializable {
+    private static final long serialVersionUID = 738881519595997996L;
+    /**主键**/
+    @NotNull(message = &quot;主键不能为空&quot;)
+    private Long id;
+    /**姓名**/
+    @NotBlank(message = &quot;名字不能为空&quot;)
+    @Length(min = 1, message = &quot;名字至少1个字&quot;)
+    private String name;
+    /**手机号**/
+    @NotBlank(message = &quot;手机号不能为空&quot;)
+    @Size(max = 11, message = &quot;手机号最长11位&quot;)
+    @Pattern(regexp = &quot;^1\\d+$&quot;, message = &quot;手机号格式不正确&quot;)
+    private String phone;
+    /**电子邮件**/
+    @NotBlank(message = &quot;邮箱不能为空&quot;)
+    @Email(message = &quot;电子邮件格式不正确&quot;)
+    @Length(max = 30, message = &quot;邮箱长度不能超过30!&quot;)
+    private String email;
+    /**自我介绍**/
+    private String aboutme;
+    /**加密密码**/
+    private String passwd;
+    /**头像图片**/
+    private String avatar;
+    /**1:普通用户，2:房产经纪人**/
+    private Integer type;
+    /**创建时间**/
+    private Date createTime;
+    /**是否启用,1启用，0停用**/
+    private Integer enable;
+    /**所属经纪机构**/
+    private Integer agencyId;
+}</code></pre>
+</li>
+</ul>
+<h4 id="基于注解实现方法缓存"><a href="#基于注解实现方法缓存" class="headerlink" title="基于注解实现方法缓存"></a>基于注解实现方法缓存</h4><h5 id="Cached：创建缓存"><a href="#Cached：创建缓存" class="headerlink" title="@Cached：创建缓存"></a>@Cached：创建缓存</h5><pre><code class="java">/**
+ * 基于注解创建缓存
+ * 缓存在 Remote 的 Redis，也可以配置成 both 开启两级缓存
+ */
+@Cached(name = CACHE_NAME, key = &quot;#userId&quot;, cacheType = CacheType.LOCAL, expire = 5 * 60)
+@CacheRefresh(refresh = 60)
+public UserVO findUserById(Long userId) {
+    User user = userMapper.selectOne(queryWrapper);
+    //.....................
+}</code></pre>
+<h5 id="CacheInvalidate：删除缓存"><a href="#CacheInvalidate：删除缓存" class="headerlink" title="@CacheInvalidate：删除缓存"></a>@CacheInvalidate：删除缓存</h5><pre><code class="java">@CacheInvalidate(name = CACHE_NAME, key = &quot;#userId&quot;)
+@Transactional(rollbackFor = Exception.class)
+public int deleteUserById(Long userId) {
+    User user = new User();
+    user.setId(userId);
+    user.setEnable(0);
+    UpdateWrapper&lt;User&gt; updateWrapper = new UpdateWrapper&lt;&gt;();
+    updateWrapper.lambda().eq(User::getId, userId).eq(User::getEnable, 1);
+    return userMapper.update(user, updateWrapper);
+}</code></pre>
+<h5 id="CacheUpdate：更新缓存"><a href="#CacheUpdate：更新缓存" class="headerlink" title="@CacheUpdate：更新缓存"></a>@CacheUpdate：更新缓存</h5><pre><code class="java">/**
+ * 更新用户
+ * @param user 用户
+ * @return int
+ */
+@CacheUpdate(name = CACHE_NAME, key = &quot;#user.id&quot;, value = &quot;#user&quot;)
+public int updateUser(User user) {
+    log.info(&quot;【UserUpdate操作】, user = {}&quot;, JSON.toJSONString(user));
+    return userMapper.updateById(user);
+}</code></pre>
+<h4 id="基于-CreateCache注解创建Cache实例"><a href="#基于-CreateCache注解创建Cache实例" class="headerlink" title="基于@CreateCache注解创建Cache实例"></a>基于@CreateCache注解创建Cache实例</h4><h5 id="CreateCache"><a href="#CreateCache" class="headerlink" title="@CreateCache"></a>@CreateCache</h5><pre><code class="java">/**
+ * 使用 @CreateCache 注解创建Cache实例;
+ * 未定义默认值的参数，将使用yml中指定的全局配置;
+ * 缓存在 Local，也可以配置成 both 开启两级缓存
+ */
+@CreateCache(name = CACHE_NAME, expire = 5 * 60, localLimit = 10, cacheType = CacheType.LOCAL)
+private Cache&lt;Long, UserVO&gt; userCache;</code></pre>
+<h5 id="查询缓存"><a href="#查询缓存" class="headerlink" title="查询缓存"></a>查询缓存</h5><pre><code class="java">public UserVO getUserByIdAndCreateCache(Long userId) {
+    //根据id从缓存中取
+    UserVO userVO = userCache.get(userId);
+    log.info(&quot;userCreateCache get {} res {}&quot;, userId, userCache);
+    if (Objects.isNull(userVO)) {
+        User user = userMapper.selectById(userId);
+        if (Objects.nonNull(user)) {
+            userVO = new UserVO();
+            BeanUtils.copyProperties(user, userVO);
+            //如果不存在就放入缓存中
+            boolean res = userCache.putIfAbsent(user.getId(), userVO);
+            log.info(&quot;userCreateCache putIfAbsent {} res {}&quot;, userId, res);
+        }
+    }
+    return userVO;
+}</code></pre>
+<h5 id="删除缓存"><a href="#删除缓存" class="headerlink" title="删除缓存"></a>删除缓存</h5><pre><code class="java">@Transactional(rollbackFor = Exception.class)
+public int deleteUserByIdAndCreateCache(Long userId) {
+    User user = new User();
+    UpdateWrapper&lt;User&gt; updateWrapper = new UpdateWrapper&lt;&gt;();
+    updateWrapper.lambda().eq(User::getId, userId).eq(User::getEnable, 1);
+    user.setId(userId);
+    user.setEnable(0);
+    int result = userMapper.update(user, updateWrapper);
+    if (result &gt; 0) {
+        //根据key = userId删除缓存
+        boolean deleteResult = userCache.remove(userId);
+        log.info(&quot;同步删除缓存, userId = {}, res = {}&quot;, userId, deleteResult);
+    }
+    return result;
+}</code></pre>
+]]></content>
+      <categories>
+        <category>缓存</category>
+      </categories>
+      <tags>
+        <tag>jetcache</tag>
+        <tag>缓存</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>分布式协议与算法-Raft算法</title>
     <url>/2020/09/05/%E5%88%86%E5%B8%83%E5%BC%8F%E5%8D%8F%E8%AE%AE%E4%B8%8E%E7%AE%97%E6%B3%95-Raft%E7%AE%97%E6%B3%95/</url>
     <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><blockquote>
 <p>为了对分布式系统有更深的理解，也为了我的技术成长提供更多可能性，我花了部分时间对目前分布式系统设计中比较常用或者重要的算法进行了学习，最终整理出这篇文章。以前学习时，对于分布式，高可用，集群，leader选举等一系列核心问题都是一知半解，希望日后我也能时常勉励自己，有时间可以再回过头来看看这篇博客，做到见微知著，举一反三。</p>
@@ -787,7 +787,10 @@ fi
 <h5 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h5><ul>
 <li>通过单节点变更解决成员变更出现的极端情况。顾名思义，单节点变更就是通过一次变更一个节点实现成员变更。如果需要变更多个节点，就就行多次单节点变更。</li>
 </ul>
-<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><pre><code> Raft 不是一致性算法而是共识算法，是一个 Multi-Paxos 算法，实现的是如何就一系列值达成共识。并且，Raft 能容忍少数节点的故障。虽然 Raft 算法能实现强一致性，也就是线性一致性（Linearizability），但需要客户端协议的配合。在实际场景中，我们一般需要根据场景特点，在一致性强度和实现复杂度之间进行权衡。比如 Consul 实现了三种一致性模型。</code></pre><ul>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><blockquote>
+<p>Raft 不是一致性算法而是共识算法，是一个 Multi-Paxos 算法，实现的是如何就一系列值达成共识。并且，Raft 能容忍少数节点的故障。虽然 Raft 算法能实现强一致性，也就是线性一致性（Linearizability），但需要客户端协议的配合。在实际场景中，我们一般需要根据场景特点，在一致性强度和实现复杂度之间进行权衡。比如 Consul 实现了三种一致性模型。</p>
+</blockquote>
+<ul>
 <li><p><code>default</code>：客户端访问领导者节点执行读操作，领导者确认自己处于稳定状态时（在 leader leasing 时间内），返回本地数据给客户端，否则返回错误给客户端。在这种情况下，客户端是可能读到旧数据的，比如此时发生了网络分区错误，新领导者已经更新过数据，但因为网络故障，旧领导者未更新数据也未退位，仍处于稳定状态。 </p>
 </li>
 <li><p><code>consistent</code>：客户端访问领导者节点执行读操作，领导者在和大多数节点确认自己仍是领导者之后返回本地数据给客户端，否则返回错误给客户端。在这种情况下，客户端读到的都是最新数据。 </p>
