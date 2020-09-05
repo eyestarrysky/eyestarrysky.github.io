@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="/img/favicon.png">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="description" content="">
+  <meta name="author" content="eyestarrysky">
+  <meta name="keywords" content="">
+  <title>分布式协议与算法 - 眼底星空</title>
+
+  <link  rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/5.12.1/css/all.min.css" />
+<link  rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/css/bootstrap.min.css" />
+<link  rel="stylesheet" href="https://cdn.staticfile.org/github-markdown-css/3.0.1/github-markdown.min.css" />
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1067060_qzomjdt8bmp.css">
+
+
+
+  <link  rel="stylesheet" href="/lib/prettify/tomorrow-night-eighties.min.css" />
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>眼底星空</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/">首页</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/archives/">归档</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/categories/">分类</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/tags/">标签</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/about/">关于</a>
+          </li>
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" data-toggle="modal" data-target="#modalSearch">&nbsp;&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="view intro-2" id="background" parallax=true
+         style="background: url('/img/one_punch_man.jpg') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center">
+          <div class="container text-center white-text fadeInUp">
+            <span class="h2" id="subtitle">
+              
+            </span>
+
+            
+              
+                <p class="mt-3 post-meta">
+                  <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                  星期六, 九月 5日 2020, 1:30 下午
+                </p>
+              
+
+              <p class="mt-1">
+                
+                  
+                  <span class="post-meta">
+                    <i class="far fa-chart-bar"></i>
+                    2.1k 字
+                  </span>
+                
+
+                
+                  
+                  <span class="post-meta">
+                      <i class="far fa-clock"></i>
+                    
+                    
+                    21
+                     分钟
+                  </span>
+                
+
+                
+              </p>
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-md">
+      <div class="container nopadding-md" id="board-ctn">
+        <div class="py-5" id="board">
+          <div class="post-content mx-auto" id="post">
+            
+            <div class="markdown-body">
+              <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><blockquote>
+<p>为了对分布式系统有更深的理解，也为了我的技术成长提供更多可能性，我花了部分时间对目前分布式系统设计中比较常用或者重要的算法进行了学习，最终整理出这篇文章。以前学习时，对于分布式，高可用，集群，leader选举等一系列核心问题都是一知半解，希望日后我也能时常勉励自己，有时间可以再回过头来看看这篇博客，做到见微知著，举一反三。</p>
+</blockquote>
+<h3 id="Paxos算法简介"><a href="#Paxos算法简介" class="headerlink" title="Paxos算法简介"></a>Paxos算法简介</h3><ul>
+<li><p>我看了很多文章，对于<code>Paxos</code>算法还是一知半解，所以这里只是对<code>Paxos</code>算法做简单的总结。</p>
+</li>
+<li><p><code>Paxos</code>算法包含两个重要部分</p>
+<ol>
+<li><code>Basic-Paxos</code>算法，描述的是多节点之间如何就某个提案达成共识</li>
+<li><code>Muti-Paxos</code>算法，描述的是执行多个<code>Basic-Paxos</code>实例，就一系列提案达成共识。下面要说的的<code>Raft</code>算法就是基于<code>Multi-Paxos</code>思想的共识算法之一。</li>
+</ol>
+</li>
+</ul>
+<h3 id="Raft算法"><a href="#Raft算法" class="headerlink" title="Raft算法"></a>Raft算法</h3><ul>
+<li><code>Raft</code>算法是现在分布式系统开发首选的共识算法。</li>
+<li><code>Raft</code>算法是强领导者模型，集群中只能有一个<code>Leader</code></li>
+</ul>
+<h4 id="成员身份"><a href="#成员身份" class="headerlink" title="成员身份"></a>成员身份</h4><ol>
+<li><code>Follower</code>：接收和处理来自<code>Leader</code>的消息，跟<code>Leader</code>心跳超时时，就变为<code>Candidate</code></li>
+<li><code>Candidate</code>：候选人向其他节点发送<code>RPC</code>消息请求投票，通知它们投票，如果赢得了大多数选票就晋升为<code>Leader</code></li>
+<li><code>Leader</code>：处理写请求，管理日志复制和不断发送心跳消息，通知其他节点。</li>
+</ol>
+<h4 id="Leader选举"><a href="#Leader选举" class="headerlink" title="Leader选举"></a>Leader选举</h4><ul>
+<li>初始状态时，集群中所有的节点都是跟随者的状态。<code>Raft</code>实现了随机超时时间的特性，每个节点等待领导者节点心跳信息的超时时间间隔是随机的。可以看到，下图中节点A会最先因为没有收到<code>leader</code>心跳信息发生超时。这个时候节点A就会增加自己的任期编号，并且推举自己为<code>Candidate</code>，并给自己投上一票，然后向其他节点发送<code>RPC</code>请求投票。</li>
+</ul>
+<p><img src="../image/Raft%E7%AE%97%E6%B3%95-Leader%E9%80%89%E4%B8%BE1.png" alt=""></p>
+<ul>
+<li><p>其他节点收到候选者A的投票请求，在编号为1的这届任期没有进行过投票，那么它将把选票投给A，并增加自己的任期编号。</p>
+</li>
+<li><p>如果候选人A在选举超时时间内赢得了大多数的选票，那么它就会成为本届任期内新的<code>Leader</code></p>
+</li>
+<li><p>节点A当选<code>Leader</code>后，他将周期性地发送心跳消息，通知其他服务器我是领导者，阻止跟随者发起新的选举</p>
+</li>
+</ul>
+<h4 id="日志复制"><a href="#日志复制" class="headerlink" title="日志复制"></a>日志复制</h4><h5 id="日志的基本介绍"><a href="#日志的基本介绍" class="headerlink" title="日志的基本介绍"></a>日志的基本介绍</h5><blockquote>
+<p>在 Raft 算法中，副本数据是以日志的形式存在的，领导者接收到来自客户端写请求后，处理写请求的过程就是一个复制和提交日志项的过程。</p>
+</blockquote>
+<ul>
+<li><h5 id="日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log-index）、任期编号（Term）。"><a href="#日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log-index）、任期编号（Term）。" class="headerlink" title="日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log index）、任期编号（Term）。"></a>日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log index）、任期编号（Term）。</h5></li>
+</ul>
+<p><img src="../image/Raft%E6%97%A5%E5%BF%97%E9%A1%B9.png" alt=""></p>
+<ul>
+<li>需要注意的是，<strong><font style="color:red">一届Leader任期内，往往有多条日志项，而且日志项的索引值是连续的。</font></strong></li>
+</ul>
+<h5 id="日志复制的过程"><a href="#日志复制的过程" class="headerlink" title="日志复制的过程"></a>日志复制的过程</h5><ul>
+<li><p>首先，领导者进入第一阶段，通过日志复制(AppendEntries) RPC 消息，将日志项复制到集群其他节点上。接着，如果领导者接收到大多数的”复制成功”响应后，它将日志项提交到它的状态机，并返回成功给客户端。如果领导者没有接收到大多数的”复制成功”响应，那么就返回错误给客户端。</p>
+</li>
+<li><p>具体而言会分为以下几步：</p>
+<ol>
+<li><code>Leader</code>基于客户端请求的指令，创建一个新的日志项，并附加到本地日志中。</li>
+<li><code>Leader</code>通过日志复制<code>RPC</code>操作，将新的日志项复制到其他服务器。</li>
+<li>当<code>Leader</code>将日志项，成功复制到大多数服务器上的时候，<code>Leader</code>会将这条日志项提交到它的状态机中。</li>
+<li><code>Leader</code>将执行的结果返回给客户端。</li>
+<li>当<code>Leader</code>接收到心跳信息，或者新的日志复制<code>RPC</code>消息后，如果<code>Followers</code>发现<code>Leader</code>已经提交了某条日志项，而它还没提交，那么它就将这条日志项提交到本机的状态机中。</li>
+</ol>
+</li>
+</ul>
+<h4 id="成员变更"><a href="#成员变更" class="headerlink" title="成员变更"></a>成员变更</h4><p>​        日常工作中服务器故障的情况偶尔也会出现，这时就要替换故障的服务器。如果遇到需要改变数据副本（服务器）数的情况，则需要增加或移除集群中的服务器，总的来说，在生产环境中集群的服务器数量是会发生变化的。</p>
+<ul>
+<li>集群的配置：集群中各节点地址的集合。比如节点A、B、C组成的集群，那么集群的配置就是[A、B、C]集合。</li>
+</ul>
+<h5 id="成员变更的带来的问题"><a href="#成员变更的带来的问题" class="headerlink" title="成员变更的带来的问题"></a>成员变更的带来的问题</h5><ul>
+<li>在集群中进行成员变更的最大风险是，可能会同时出现 2 个领导者。比如在进行成员变更时，节点 A、B 和 C 之间发生了分区错误，节点 A、B 组成旧配置中的“大多数”，也就是变更前的 3 节点集群中的“大多数”，那么这时的领导者（节点 A）依旧是领导者。  另一方面，节点 C 和新节点 D、E 组成了新配置的“大多数”，也就是变更后的 5 节点集群中的“大多数”，它们可能会选举出新的领导者（比如节点 C）。那么这时，就出现了同时存在 2 个领导者的情况。 </li>
+</ul>
+<p><img src="../image/%E6%88%90%E5%91%98%E5%8F%98%E6%9B%B4%E5%A4%9Aleader.png" alt=""></p>
+<h5 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h5><ul>
+<li>通过单节点变更解决成员变更出现的极端情况。顾名思义，单节点变更就是通过一次变更一个节点实现成员变更。如果需要变更多个节点，就就行多次单节点变更。</li>
+</ul>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><pre><code> **Raft 不是一致性算法而是共识算法，是一个 Multi-Paxos 算法，实现的是如何就一系列值达成共识。并且，Raft 能容忍少数节点的故障。虽然 Raft 算法能实现强一致性，也就是线性一致性（Linearizability），但需要客户端协议的配合。在实际场景中，我们一般需要根据场景特点，在一致性强度和实现复杂度之间进行权衡。比如 Consul 实现了三种一致性模型。** </code></pre><ul>
+<li><p><code>default</code>：客户端访问领导者节点执行读操作，领导者确认自己处于稳定状态时（在 leader leasing 时间内），返回本地数据给客户端，否则返回错误给客户端。在这种情况下，客户端是可能读到旧数据的，比如此时发生了网络分区错误，新领导者已经更新过数据，但因为网络故障，旧领导者未更新数据也未退位，仍处于稳定状态。 </p>
+</li>
+<li><p><code>consistent</code>：客户端访问领导者节点执行读操作，领导者在和大多数节点确认自己仍是领导者之后返回本地数据给客户端，否则返回错误给客户端。在这种情况下，客户端读到的都是最新数据。 </p>
+</li>
+<li><p><code>stale</code>：从任意节点读数据，不局限于领导者节点，客户端可能会读到旧数据。 </p>
+<p><strong>一般而言，在实际工程中，Consul 的 consistent 就够用了，可以不用线性一致性，只要能保证写操作完成后，每次读都能读到最新值就可以了。比如为了实现冥等操作，我们使用一个编号 (ID) 来唯一标记一个操作，并使用一个状态字段（nil/done）来标记操作是否已经执行，那么只要我们能保证设置了 ID 对应状态值为 done 后，能立即和一直读到最新状态值就可以了，也就通过防止操作的重复执行，实现了冥等性。</strong> </p>
+</li>
+</ul>
+<p>​      *<em>总的来说，Raft 算法能很好地处理绝大部分场景的一致性问题，在设计分布式系统时，优先考虑 Raft 算法，当 Raft 算法不能满足现有场景需求时，再去调研其他共识算法。 *</em></p>
+
+            </div>
+            <hr>
+            <div>
+              <p>
+                
+                  <span>
+                <i class="iconfont icon-inbox"></i>
+                    
+                      <a class="hover-with-bg" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+                      &nbsp;
+                    
+                  </span>&nbsp;&nbsp;
+                
+                
+                  <span>
+                <i class="iconfont icon-tag"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a>
+                    
+                  </span>
+                
+              </p>
+              
+                <p class="note note-warning">本博客所有文章除特别声明外，均采用 <a href="https://zh.wikipedia.org/wiki/Wikipedia:CC_BY-SA_3.0%E5%8D%8F%E8%AE%AE%E6%96%87%E6%9C%AC" target="_blank" rel="nofollow noopener noopener">CC BY-SA 3.0协议</a> 。转载请注明出处！</p>
+              
+              
+                <div class="post-prevnext row">
+                  <div class="post-prev col-6">
+                    
+                    
+                  </div>
+                  <div class="post-next col-6">
+                    
+                    
+                      <a href="/2020/08/16/keepalived%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/">
+                        <span class="hidden-mobile">Keepalived软件架构</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="fa fa-chevron-right"></i>
+                      </a>
+                    
+                  </div>
+                </div>
+              
+            </div>
+
+              
+          </div>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container" id="toc-ctn">
+        <div id="toc">
+  <p class="h5"><i class="far fa-list-alt"></i>&nbsp;目录</p>
+  <div id="tocbot"></div>
+</div>
+
+      </div>
+    
+  </div>
+</div>
+
+<!-- Custom -->
+
+
+    
+  </main>
+
+  
+    <a id="scroll-top-button" href="#" role="button">
+      <i class="fa fa-chevron-up scroll-top-arrow" aria-hidden="true"></i>
+    </a>
+  
+
+  
+    <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+  
+
+  
+
+  
+
+  <footer class="mt-5">
+  <div class="text-center py-3">
+    <div>
+      <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a>
+      <i class="iconfont icon-love"></i>
+      <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener">
+        <span>Fluid</span></a>
+    </div>
+    
+
+    
+
+    
+  </div>
+</footer>
+
+<!-- SCRIPTS -->
+<script  src="https://cdn.staticfile.org/jquery/3.4.1/jquery.min.js" ></script>
+<script  src="https://cdn.staticfile.org/popper.js/1.16.1/umd/popper.min.js" ></script>
+<script  src="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/js/bootstrap.min.js" ></script>
+<script  src="/js/main.js" ></script>
+
+
+
+
+  
+  <script  src="https://cdn.staticfile.org/tocbot/4.10.0/tocbot.min.js" ></script>
+  <script>
+    $(document).ready(function () {
+      var boardCtn = $('#board-ctn');
+      var boardTop = boardCtn.offset().top;
+
+      tocbot.init({
+        tocSelector: '#tocbot',
+        contentSelector: '.post-content',
+        headingSelector: 'h1,h2,h3,h4,h5,h6',
+        linkClass: 'tocbot-link',
+        activeLinkClass: 'tocbot-active-link',
+        listClass: 'tocbot-list',
+        isCollapsedClass: 'tocbot-is-collapsed',
+        collapsibleClass: 'tocbot-is-collapsible',
+        collapseDepth: 0,
+        scrollSmooth: true,
+        headingsOffset: -boardTop
+      });
+      if ($('.toc-list-item').length > 0) {
+        $('#toc > p').css('visibility', 'visible');
+      }
+    });
+  </script>
+
+
+
+
+
+  <script defer src="https://cdn.staticfile.org/clipboard.js/2.0.6/clipboard.min.js" ></script>
+  <script  src="/js/clipboard-use.js" ></script>
+
+
+
+
+
+
+
+
+<!-- Plugins -->
+
+
+
+  <script  src="https://cdn.staticfile.org/prettify/188.0.0/prettify.min.js" ></script>
+  <script>
+    $(document).ready(function () {
+      $('pre').each(function () {
+        const pre = $(this);
+        if (pre.find('code.mermaid').length > 0) {
+          return;
+        }
+        pre.addClass('prettyprint  linenums');
+      });
+      prettyPrint();
+    })
+  </script>
+
+
+
+  <script  src="https://cdn.staticfile.org/typed.js/2.0.11/typed.min.js" ></script>
+  <script>
+    var typed = new Typed('#subtitle', {
+      strings: [
+        '  ',
+        "分布式协议与算法&nbsp;",
+      ],
+      cursorChar: "_",
+      typeSpeed: 70,
+      loop: false,
+    });
+    typed.stop();
+    $(document).ready(function () {
+      $(".typed-cursor").addClass("h2");
+      typed.start();
+    });
+  </script>
+
+
+
+  <script  src="https://cdn.staticfile.org/anchor-js/4.2.2/anchor.min.js" ></script>
+  <script>
+    anchors.options = {
+      placement: "right",
+      visible: "hover",
+      
+    };
+    var el = "h1,h2,h3,h4,h5,h6".split(",");
+    var res = [];
+    for (item of el) {
+      res.push(".markdown-body > " + item)
+    }
+    anchors.add(res.join(", "))
+  </script>
+
+
+
+  <script  src="/js/local-search.js" ></script>
+  <script>
+    var path = "/local-search.xml";
+    var inputArea = document.querySelector("#local-search-input");
+    inputArea.onclick = function () {
+      getSearchFile(path);
+      this.onclick = null
+    }
+  </script>
+
+
+
+  <script  src="https://cdn.staticfile.org/fancybox/3.5.7/jquery.fancybox.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.staticfile.org/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+  <script>
+    $('#post img:not(.no-zoom img, img[no-zoom]), img[zoom]').each(
+      function () {
+        var element = document.createElement('a');
+        $(element).attr('data-fancybox', 'images');
+        $(element).attr('href', $(this).attr('src'));
+        $(this).wrap(element);
+      }
+    );
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
