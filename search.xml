@@ -979,4 +979,389 @@ public class RedisKeyExpirationListener extends KeyExpirationEventMessageListene
         <tag>redis</tag>
       </tags>
   </entry>
+  <entry>
+    <title>分布式事务解决方案-Seata</title>
+    <url>/2020/05/26/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88-Seata/</url>
+    <content><![CDATA[<h3 id="写在前面的话"><a href="#写在前面的话" class="headerlink" title="写在前面的话"></a>写在前面的话</h3><blockquote>
+<p>好久没有写博客了，不知道写点什么。正好要在公司分享技术，我就想到了好久之前看过的分布式事务的框架seata。趁着这个机会，查漏补缺，整理一篇博客出来，从理论到实战，让我对其设计思想，实际应用又更多一分认识。</p>
+</blockquote>
+<h3 id="什么是Seata"><a href="#什么是Seata" class="headerlink" title="什么是Seata?"></a>什么是Seata?</h3><ul>
+<li>Seata 是一款开源的分布式事务解决方案，致力于提供高性能和简单易用的分布式事务服务。Seata 将为用户提供了 AT、TCC、SAGA 和 XA 事务模式，为用户打造一站式的分布式解决方案。 </li>
+</ul>
+<h4 id="Seata术语"><a href="#Seata术语" class="headerlink" title="Seata术语"></a>Seata术语</h4><ul>
+<li>TC (Transaction Coordinator) - 事务协调者： 维护全局和分支事务的状态，驱动全局事务提交或回滚。 </li>
+<li>TM (Transaction Manager) - 事务管理器： 定义全局事务的范围：开始全局事务、提交或回滚全局事务。 </li>
+<li>RM (Resource Manager) - 资源管理器： 管理分支事务处理的资源，与TC交谈以注册分支事务和报告分支事务的状态，并驱动分支事务提交或回滚。 </li>
+</ul>
+<h3 id="事务模式-AT模式"><a href="#事务模式-AT模式" class="headerlink" title="事务模式-AT模式"></a>事务模式-AT模式</h3><p><strong>本质是对两阶段提交协议的演变</strong></p>
+<ul>
+<li>一阶段：业务数据和回滚的日志记录在同一个本地事务中提交。</li>
+<li>二阶段：<ul>
+<li>提交异步化</li>
+<li>如果发生异常，回滚通过一阶段提交的回滚日志进行反向补偿</li>
+</ul>
+</li>
+</ul>
+<h4 id="写隔离-重要"><a href="#写隔离-重要" class="headerlink" title="写隔离 (重要)"></a>写隔离 <font style="color:red;">(重要)</font></h4><ul>
+<li>一阶段提交本地事务需要拿到<strong>全局锁</strong></li>
+<li>二阶段全局回滚需要拿到对应分支数据的<strong>本地锁</strong></li>
+</ul>
+<p>这里拿官方文档的示例说明（不是我懒，官方的图挺好的）:</p>
+<ul>
+<li>这里有两个全局事务，<code>tx1</code>和<code>tx2</code>，分别对一张表的m字段进行更新操作</li>
+<li>由图可知，<code>tx1</code>先开启本地事务拿本地锁，执行更新操作<code>update a set m = m - 100 where id = 1</code>。然后获取全局锁。如果拿到全局事务锁，就提交本地事务，释放本地锁。此后<code>tx2</code>开启事务，执行更新操作，然后尝试去获取<code>全局锁</code>，此时<code>全局锁</code>被<code>tx1</code>持有，于是<code>tx2</code>就进行重试并等待<code>全局锁</code>。</li>
+</ul>
+<p><img src="https://img.alicdn.com/tfs/TB1zaknwVY7gK0jSZKzXXaikpXa-702-521.png" alt=""></p>
+<ul>
+<li><code>tx1</code>二阶段全局提交，释放<code>全局锁</code>，然后<code>tx2</code>才能拿到<code>全局锁</code>提交本地事务</li>
+</ul>
+<p><img src="https://img.alicdn.com/tfs/TB1xW0UwubviK0jSZFNXXaApXXa-718-521.png" alt=""></p>
+<ul>
+<li><p>如果<code>tx1</code>的二阶段全局回滚，那么<code>tx1</code>需要重新获取其数据（对应分支）的本地锁进行反向补偿。这时如果<code>tx2</code>还在等待全局锁，同时持有本地锁，那么<code>tx1</code>拿不到对应数据的本地锁的本地分支就会回滚失败。分支的回滚就会进行重试，直到<code>tx2</code>的全局锁获取等待超时，于是放弃全局锁，并回滚本地事务释放本地锁，这时<code>tx1</code>拿到本地锁就回滚成功。</p>
+</li>
+<li><p>由于整个过程<code>tx1</code>一直持有<code>全局锁</code>，所以不会发生<code>赃写</code>的问题</p>
+</li>
+</ul>
+<h4 id="读隔离-重要"><a href="#读隔离-重要" class="headerlink" title="读隔离 (重要)"></a>读隔离 <font style="color:red;">(重要)</font></h4><ul>
+<li>在数据库本地事务隔离级别 <strong>读已提交（Read Committed）</strong> 或以上的基础上，<code>Seata（AT 模式）</code>的默认全局隔离级别是 <strong>读未提交（Read Uncommitted）</strong> 。如果应用在特定场景下，必需要求全局的 <strong>读已提交</strong> ，目前 <code>Seata</code> 的方式是通过 <code>SELECT FOR UPDATE</code> 语句的代理。</li>
+</ul>
+<p><img src="https://img.alicdn.com/tfs/TB138wuwYj1gK0jSZFuXXcrHpXa-724-521.png" alt=""></p>
+<ul>
+<li>如图所示，执行<code>select for update</code>时会申请全局锁，如果全局锁被其他事务持有，则释放本地锁并重试。整个过程，查询是<code>block</code>的，直到拿到全局锁。即读取到的数据是<code>已提交</code>的，才将数据返回。</li>
+</ul>
+<h4 id="工作机制"><a href="#工作机制" class="headerlink" title="工作机制"></a>工作机制</h4><p>以一个示例来说明整个 AT 分支的工作过程。</p>
+<p>业务表：<code>product</code></p>
+<table>
+<thead>
+<tr>
+<th align="center">Field</th>
+<th align="center">Type</th>
+<th align="center">Key</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">id</td>
+<td align="center">bigint(20)</td>
+<td align="center">PRI</td>
+</tr>
+<tr>
+<td align="center">name</td>
+<td align="center">varchar(100)</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">since</td>
+<td align="center">varchar(100)</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<p>AT 分支事务的业务逻辑：</p>
+<pre><code class="mysql">update product set name = &#39;GTS&#39; where name = &#39;TXC&#39;;</code></pre>
+<h4 id="一阶段"><a href="#一阶段" class="headerlink" title="一阶段"></a>一阶段</h4><ol>
+<li><p>解析 SQL：得到 SQL 的类型（UPDATE），表（product），条件（where name = ‘TXC’）等相关的信息。</p>
+</li>
+<li><p>查询前镜像：根据解析得到的条件信息，生成查询语句，定位数据。</p>
+<pre><code class="mysql">select id, name, since from product where name = &#39;TXC&#39;;
+
+## 得到修改前的镜像
+{
+ id: 1,
+ name: TXC,
+ since: 2014
+}</code></pre>
+<p>得到前镜像</p>
+</li>
+<li><p>执行业务 SQL：更新这条记录的 name 为 ‘GTS’。</p>
+</li>
+<li><p>查询后镜像：根据前镜像的结果，通过 <strong>主键</strong> 定位数据。</p>
+<pre><code class="mysql">select id, name, since from product where id = 1`;
+
+## 得到修改后的镜像
+{
+ id: 1,
+ name: GTS,
+ since: 2014
+}</code></pre>
+</li>
+<li><p>插入回滚日志：把前后镜像数据以及业务 SQL 相关的信息组成一条回滚日志记录，插入到 <code>UNDO_LOG</code> 表中。</p>
+<pre><code class="json">{
+    &quot;branchId&quot;: 641789253,
+    &quot;undoItems&quot;: [{
+        &quot;afterImage&quot;: {
+            &quot;rows&quot;: [{
+                &quot;fields&quot;: [{
+                    &quot;name&quot;: &quot;id&quot;,
+                    &quot;type&quot;: 4,
+                    &quot;value&quot;: 1
+                }, {
+                    &quot;name&quot;: &quot;name&quot;,
+                    &quot;type&quot;: 12,
+                    &quot;value&quot;: &quot;GTS&quot;
+                }, {
+                    &quot;name&quot;: &quot;since&quot;,
+                    &quot;type&quot;: 12,
+                    &quot;value&quot;: &quot;2014&quot;
+                }]
+            }],
+            &quot;tableName&quot;: &quot;product&quot;
+        },
+        &quot;beforeImage&quot;: {
+            &quot;rows&quot;: [{
+                &quot;fields&quot;: [{
+                    &quot;name&quot;: &quot;id&quot;,
+                    &quot;type&quot;: 4,
+                    &quot;value&quot;: 1
+                }, {
+                    &quot;name&quot;: &quot;name&quot;,
+                    &quot;type&quot;: 12,
+                    &quot;value&quot;: &quot;TXC&quot;
+                }, {
+                    &quot;name&quot;: &quot;since&quot;,
+                    &quot;type&quot;: 12,
+                    &quot;value&quot;: &quot;2014&quot;
+                }]
+            }],
+            &quot;tableName&quot;: &quot;product&quot;
+        },
+        &quot;sqlType&quot;: &quot;UPDATE&quot;
+    }],
+    &quot;xid&quot;: &quot;xid:xxx&quot;
+}</code></pre>
+</li>
+<li><p>提交前，向 <code>TC</code> 注册分支：申请 <code>product</code> 表中，主键值等于 1 的记录的 <strong>全局锁</strong> 。</p>
+</li>
+<li><p>本地事务提交：业务数据的更新和前面步骤中生成的 <code>UNDO LOG</code> 一并提交。</p>
+</li>
+<li><p>将本地事务提交的结果上报给 <code>TC</code>。</p>
+</li>
+</ol>
+<h4 id="二阶段-回滚"><a href="#二阶段-回滚" class="headerlink" title="二阶段-回滚"></a>二阶段-回滚</h4><ol>
+<li><p>收到 <code>TC</code>的分支回滚请求，开启一个本地事务，执行如下操作。</p>
+</li>
+<li><p>通过<code>XID</code> 和<code>Branch ID</code> 查找到相应的 <code>UNDO LOG</code> 记录。</p>
+</li>
+<li><p>数据校验：拿 <code>UNDO LOG</code> 中的后镜与当前数据进行比较，如果有不同，说明数据被当前全局事务之外的动作做了修改。这种情况，需要根据配置策略来做处理，详细的说明在另外的文档中介绍。</p>
+</li>
+<li><p>根据 <code>UNDO LOG</code> 中的前镜像和业务 <code>SQL</code> 的相关信息生成并执行回滚的语句：</p>
+<pre><code class="mysql">update product set name = &#39;TXC&#39; where id = 1;</code></pre>
+</li>
+<li><p>提交本地事务。并把本地事务的执行结果（即分支事务回滚的结果）上报给 TC。</p>
+</li>
+</ol>
+<h4 id="二阶段-提交"><a href="#二阶段-提交" class="headerlink" title="二阶段-提交"></a>二阶段-提交</h4><ol>
+<li>收到 <code>TC</code> 的分支提交请求，把请求放入一个异步任务的队列中，马上返回提交成功的结果给 TC。</li>
+<li>异步任务阶段的分支提交请求将异步和批量地删除相应 <code>UNDO LOG</code>记录。</li>
+</ol>
+<h3 id="项目实战"><a href="#项目实战" class="headerlink" title="项目实战"></a>项目实战</h3><blockquote>
+<p>这里只是简单的使用。注册中心采用eureka，网关使用gateway，rpc使用<code>feign</code></p>
+</blockquote>
+<h4 id="工程结构"><a href="#工程结构" class="headerlink" title="工程结构"></a>工程结构</h4><pre><code class="shell">├─account-service    -- 账户服务 --
+├─eureka-server      -- 注册中心 -- 
+├─gateway-service    -- 网关服务 -- 
+├─goods-service      -- 商品服务 --
+└─order-service      -- 订单服务 --</code></pre>
+<h4 id="建表语句"><a href="#建表语句" class="headerlink" title="建表语句"></a>建表语句</h4><h5 id="业务sql"><a href="#业务sql" class="headerlink" title="业务sql"></a>业务sql</h5><pre><code class="mysql">create table account
+(
+    id         bigint unsigned not null primary key auto_increment comment &#39;主键id&#39;,
+    money      decimal(11, 2)  not null default 0 comment &#39;账户余额&#39;,
+    gmt_create timestamp       not null default current_timestamp comment &#39;创建时间&#39;,
+    gmt_modify timestamp       not null default current_timestamp on update current_timestamp comment &#39;修改时间&#39;
+) comment &#39;账户表&#39;;
+
+create table goods
+(
+    id         bigint unsigned not null primary key auto_increment comment &#39;主键id&#39;,
+    name       varchar(32)     not null default &#39;&#39; comment &#39;商品名称&#39;,
+    stock      int unsigned    not null default 0 comment &#39;库存数量&#39;,
+    price      decimal(11, 2)  not null default 0 comment &#39;商品价格&#39;,
+    gmt_create timestamp       not null default current_timestamp comment &#39;创建时间&#39;,
+    gmt_modify timestamp       not null default current_timestamp on update current_timestamp comment &#39;修改时间&#39;
+) comment &#39;商品表&#39;;
+
+create table order_detail
+(
+    id         bigint unsigned not null primary key auto_increment comment &#39;主键id&#39;,
+    goods_id   bigint unsigned not null comment &#39;商品id&#39;,
+    account_id bigint unsigned not null comment &#39;账户id&#39;,
+    price      decimal(11, 2)  not null default 0 comment &#39;订单价格&#39;,
+    amount     int unsigned    not null default 1 comment &#39;商品数量&#39;,
+    gmt_create timestamp       not null default current_timestamp comment &#39;创建时间&#39;,
+    gmt_modify timestamp       not null default current_timestamp on update current_timestamp comment &#39;修改时间&#39;
+) comment &#39;订单表&#39;;
+
+insert into account(money)
+values (10000);
+insert into goods(name, stock, price)
+values (&#39;华为Meta 30&#39;, 10, 5000.00);</code></pre>
+<h5 id="回滚日志表"><a href="#回滚日志表" class="headerlink" title="回滚日志表"></a>回滚日志表</h5><pre><code class="mysql">CREATE TABLE `undo_log`
+(
+    `id`            bigint(20)   NOT NULL AUTO_INCREMENT,
+    `branch_id`     bigint(20)   NOT NULL comment, 
+    `xid`           varchar(100) NOT NULL,
+    `context`       varchar(128) NOT NULL,
+    `rollback_info` longblob     NOT NULL,
+    `log_status`    int(11)      NOT NULL,
+    `log_created`   datetime     NOT NULL,
+    `log_modified`  datetime     NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `ux_undo_log` (`xid`, `branch_id`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8;</code></pre>
+<h4 id="项目配置文件"><a href="#项目配置文件" class="headerlink" title="项目配置文件"></a>项目配置文件</h4><p><code>application.yml</code></p>
+<pre><code class="yaml"># 在项目中加入seata的事务分组配置
+spring:  
+  cloud:
+    alibaba:
+      seata:
+        tx-service-group: eyestarrysky-seata</code></pre>
+<p>在<code>Seata</code>项目提供的<code>file.conf</code>中加入如下配置</p>
+<pre><code class="properties">## transaction log store
+store {
+  # 修改数据库配置
+  ## database store
+  db {
+    datasource = &quot;druid&quot;
+    db-type = &quot;mysql&quot;
+    driver-class-name = &quot;com.mysql.jdbc.Driver&quot;
+    url = &quot;jdbc:mysql://xxx:3306/seata&quot;
+    user = &quot;xxx&quot;
+    password = &quot;xxx&quot;
+  }
+
+}
+service {
+  # 这里记得配置事务分组(eyestarrysky-seata)
+  vgroup_mapping.eyestarrysky-seata = &quot;default&quot;
+  default.grouplist = &quot;127.0.0.1:8091&quot;
+  enableDegrade = false
+  # disable seata
+  disableGlobalTransaction = false
+}</code></pre>
+<h4 id="项目启动"><a href="#项目启动" class="headerlink" title="项目启动"></a>项目启动</h4><ul>
+<li><p>启动<code>seata-server</code> </p>
+</li>
+<li><p>依次启动<strong>注册中心</strong>，<strong>网关中心</strong>和<strong>业务工程</strong></p>
+</li>
+</ul>
+<h4 id="业务流程"><a href="#业务流程" class="headerlink" title="业务流程"></a>业务流程</h4><ul>
+<li>下图解释了<code>TC</code>，<code>TM</code>，<code>RM</code>在项目中的具体角色和业务流程 （<a href="#Seata术语">名词解释</a>）</li>
+</ul>
+<p><img src="http://qiniu.eyestarrysky.top/seata%E5%9B%BE%E7%89%87.png" alt="原谅我手残"></p>
+<ol>
+<li>调用订单服务下单接口</li>
+<li>订单服务调用商品服务检查库存</li>
+<li>订单服务调用账户服务检查账户余额</li>
+<li>本地事务-生成订单</li>
+<li>远程事务扣减库存</li>
+<li>账户服务扣减账户余额</li>
+</ol>
+<ul>
+<li>简单看下代码，使用非常方便，在<code>OrderService</code>中的提交订单方法上加 <font style="color:red"><code>@GlobalTransactional</code></font>注解，<code>name</code>的值应该填充为<code>application.yml</code>中配置的事务分组名称<strong>eyestarrysky-seata</strong>，<code>flag</code>字段方便我在测试接口时控制提交，和回滚</li>
+</ul>
+<pre><code class="java">@GlobalTransactional(name = &quot;eyestarrysky-seata&quot;, rollbackFor = Exception.class)
+public void submitOrder(Long goodsId, Long accountId, Integer amount, Integer flag) {
+    //查询商品
+    Goods goods = goodsClient.findById(goodsId);
+    if (goods == null) {
+        throw new IllegalArgumentException(&quot;商品数据找不到&quot;);
+    }
+    if (goods.getStock() &lt; amount) {
+        log.warn(&quot;【生成订单失败，商品库存不足】商品信息: {}, 购买数量amount = {}&quot;, JSON.toJSONString(goods), amount);
+        return;
+    }
+    BigDecimal orderPrice = goods.getPrice().multiply(BigDecimal.valueOf(amount));
+
+    Account account = accountClient.findOneAccount(accountId);
+    if (account == null) {
+        throw new IllegalArgumentException(&quot;账户找不到&quot;);
+    }
+    if (account.getMoney().compareTo(orderPrice) &lt; 0) {
+        log.warn(&quot;【生成订单失败，账户余额不足】账户余额: {}, 订单总额amount = {}&quot;, account.getMoney(), orderPrice);
+        return;
+    }
+    OrderDetail orderDetail = new OrderDetail();
+    orderDetail.setAccountId(accountId);
+    orderDetail.setAmount(amount);
+    orderDetail.setGoodsId(goodsId);
+    orderDetail.setPrice(orderPrice);
+    //1.本地事务-扣减库存
+    orderDetailMapper.insert(orderDetail);
+
+    //2. 远程事务-扣减库存
+    goodsClient.reduceStock(goodsId, amount);
+    //3. 远程事务-扣减余额
+    accountClient.deductionMoney(accountId, orderPrice);
+
+    if (flag &gt; 0) {
+        log.error(&quot;【发生异常，事务回滚】&quot;);
+        throw new RuntimeException(&quot;回滚事务&quot;);
+    }
+}</code></pre>
+<h4 id="事务执行中的数据情况"><a href="#事务执行中的数据情况" class="headerlink" title="事务执行中的数据情况"></a>事务执行中的数据情况</h4><ul>
+<li><p>商品数据</p>
+<pre><code class="json">{
+    &quot;id&quot;: 1,
+    &quot;price&quot;: 5000
+    &quot;stock&quot;: 6
+}</code></pre>
+</li>
+<li><p>账户数据</p>
+<pre><code class="json">{
+    &quot;id&quot;: 1,
+    &quot;money&quot;: 30000.00,
+    &quot;gmtCreate&quot;: &quot;2020-09-08T17:26:44.000+00:00&quot;,
+    &quot;gmtModify&quot;: &quot;2021-05-28T08:56:33.000+00:00&quot;
+}</code></pre>
+</li>
+</ul>
+<h5 id="正常下单"><a href="#正常下单" class="headerlink" title="正常下单"></a>正常下单</h5><pre><code class="json"># 购买商品一件，订单正常生成
+# 商品
+{
+    &quot;id&quot;: 1,
+    &quot;price&quot;: 5000
+    &quot;stock&quot;: 5
+}
+
+# 账户
+{
+    &quot;id&quot;: 1,
+    &quot;money&quot;: 25000.00,
+    &quot;gmtCreate&quot;: &quot;2020-09-08T17:26:44.000+00:00&quot;,
+    &quot;gmtModify&quot;: &quot;2021-05-28T08:56:33.000+00:00&quot;
+}</code></pre>
+<h5 id="日志打印"><a href="#日志打印" class="headerlink" title="日志打印"></a>日志打印</h5><pre><code class="json"># 订单生成前，开启事务，并生成xid 
+i.seata.tm.api.DefaultGlobalTransaction  : Begin new global transaction [172.17.0.2:8091:141593301408030720]
+# 生成订单完成 --&gt; 扣减商品库存前
+# 此时undo_log表里面写入一条数据
+{
+    &quot;branch_id&quot;: 141593374497972224,
+    &quot;xid&quot;: &quot;172.17.0.2:8091:141593301408030720&quot;,
+    &quot;rollback_info&quot;: &quot;xxx&quot;
+}
+
+# 扣减库存完成，undo_log表多了一条数据,xid是相同的
+{
+    &quot;branch_id&quot;: 141594493718634496,
+    &quot;xid&quot;: &quot;172.17.0.2:8091:141593301408030720&quot;,
+    &quot;rollback_info&quot;: &quot;xxx&quot;
+}</code></pre>
+<h5 id="订单下单失败的情况"><a href="#订单下单失败的情况" class="headerlink" title="订单下单失败的情况"></a>订单下单失败的情况</h5><ul>
+<li>这里我简单的测试了3种情况<ol>
+<li>下单超时情况（全局事务未提交前），回滚成功</li>
+<li>本地事务发生异常，回滚成功</li>
+<li>分支事务发生异常，回滚成功</li>
+</ol>
+</li>
+</ul>
+<h3 id="写在最后"><a href="#写在最后" class="headerlink" title="写在最后"></a>写在最后</h3><ul>
+<li>这篇文章只是对<code>seata</code>的简单介绍和应用，后面我会另写一篇文章（埋个坑）来从源码的角度更深入地分析，<code>seata</code>是如何处理分布式事务的。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>分布式事务</category>
+      </categories>
+      <tags>
+        <tag>seata</tag>
+        <tag>分布式事务</tag>
+      </tags>
+  </entry>
 </search>
