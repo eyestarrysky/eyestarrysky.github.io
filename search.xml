@@ -167,6 +167,559 @@ public class DatawayApplication {
       </tags>
   </entry>
   <entry>
+    <title>分布式事务解决方案-Seata</title>
+    <url>/2021/05/26/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88-Seata/</url>
+    <content><![CDATA[<h3 id="写在前面的话"><a href="#写在前面的话" class="headerlink" title="写在前面的话"></a>写在前面的话</h3><blockquote>
+<p>好久没有写博客了，不知道写点什么。正好要在公司分享技术，我就想到了好久之前看过的分布式事务的框架seata。趁着这个机会，查漏补缺，整理一篇博客出来，从理论到实战，让我对其设计思想，实际应用又更多一分认识。</p>
+</blockquote>
+<h3 id="什么是Seata"><a href="#什么是Seata" class="headerlink" title="什么是Seata?"></a>什么是Seata?</h3><ul>
+<li>Seata 是一款开源的分布式事务解决方案，致力于提供高性能和简单易用的分布式事务服务。Seata 将为用户提供了 AT、TCC、SAGA 和 XA 事务模式，为用户打造一站式的分布式解决方案。 </li>
+</ul>
+<h4 id="Seata术语"><a href="#Seata术语" class="headerlink" title="Seata术语"></a>Seata术语</h4><ul>
+<li>TC (Transaction Coordinator) - 事务协调者： 维护全局和分支事务的状态，驱动全局事务提交或回滚。 </li>
+<li>TM (Transaction Manager) - 事务管理器： 定义全局事务的范围：开始全局事务、提交或回滚全局事务。 </li>
+<li>RM (Resource Manager) - 资源管理器： 管理分支事务处理的资源，与TC交谈以注册分支事务和报告分支事务的状态，并驱动分支事务提交或回滚。 </li>
+</ul>
+<h3 id="事务模式-AT模式"><a href="#事务模式-AT模式" class="headerlink" title="事务模式-AT模式"></a>事务模式-AT模式</h3><p><strong>本质是对两阶段提交协议的演变</strong></p>
+<ul>
+<li>一阶段：业务数据和回滚的日志记录在同一个本地事务中提交。</li>
+<li>二阶段：<ul>
+<li>提交异步化</li>
+<li>如果发生异常，回滚通过一阶段提交的回滚日志进行反向补偿</li>
+</ul>
+</li>
+</ul>
+<h4 id="写隔离-重要"><a href="#写隔离-重要" class="headerlink" title="写隔离 (重要)"></a>写隔离 <font style="color:red;">(重要)</font></h4><ul>
+<li>一阶段提交本地事务需要拿到<strong>全局锁</strong></li>
+<li>二阶段全局回滚需要拿到对应分支数据的<strong>本地锁</strong></li>
+</ul>
+<p>这里拿官方文档的示例说明（不是我懒，官方的图挺好的）:</p>
+<ul>
+<li>这里有两个全局事务，<code>tx1</code>和<code>tx2</code>，分别对一张表的m字段进行更新操作</li>
+<li>由图可知，<code>tx1</code>先开启本地事务拿本地锁，执行更新操作<code>update a set m = m - 100 where id = 1</code>。然后获取全局锁。如果拿到全局事务锁，就提交本地事务，释放本地锁。此后<code>tx2</code>开启事务，执行更新操作，然后尝试去获取<code>全局锁</code>，此时<code>全局锁</code>被<code>tx1</code>持有，于是<code>tx2</code>就进行重试并等待<code>全局锁</code>。</li>
+</ul>
+<p><img src="https://img.alicdn.com/tfs/TB1zaknwVY7gK0jSZKzXXaikpXa-702-521.png" alt=""></p>
+<ul>
+<li><code>tx1</code>二阶段全局提交，释放<code>全局锁</code>，然后<code>tx2</code>才能拿到<code>全局锁</code>提交本地事务</li>
+</ul>
+<p><img src="https://img.alicdn.com/tfs/TB1xW0UwubviK0jSZFNXXaApXXa-718-521.png" alt=""></p>
+<ul>
+<li><p>如果<code>tx1</code>的二阶段全局回滚，那么<code>tx1</code>需要重新获取其数据（对应分支）的本地锁进行反向补偿。这时如果<code>tx2</code>还在等待全局锁，同时持有本地锁，那么<code>tx1</code>拿不到对应数据的本地锁的本地分支就会回滚失败。分支的回滚就会进行重试，直到<code>tx2</code>的全局锁获取等待超时，于是放弃全局锁，并回滚本地事务释放本地锁，这时<code>tx1</code>拿到本地锁就回滚成功。</p>
+</li>
+<li><p>由于整个过程<code>tx1</code>一直持有<code>全局锁</code>，所以不会发生<code>赃写</code>的问题</p>
+</li>
+</ul>
+<h4 id="读隔离-重要"><a href="#读隔离-重要" class="headerlink" title="读隔离 (重要)"></a>读隔离 <font style="color:red;">(重要)</font></h4><ul>
+<li>在数据库本地事务隔离级别 <strong>读已提交（Read Committed）</strong> 或以上的基础上，<code>Seata（AT 模式）</code>的默认全局隔离级别是 <strong>读未提交（Read Uncommitted）</strong> 。如果应用在特定场景下，必需要求全局的 <strong>读已提交</strong> ，目前 <code>Seata</code> 的方式是通过 <code>SELECT FOR UPDATE</code> 语句的代理。</li>
+</ul>
+<p><img src="https://img.alicdn.com/tfs/TB138wuwYj1gK0jSZFuXXcrHpXa-724-521.png" alt=""></p>
+<ul>
+<li>如图所示，执行<code>select for update</code>时会申请全局锁，如果全局锁被其他事务持有，则释放本地锁并重试。整个过程，查询是<code>block</code>的，直到拿到全局锁。即读取到的数据是<code>已提交</code>的，才将数据返回。</li>
+</ul>
+<h4 id="工作机制"><a href="#工作机制" class="headerlink" title="工作机制"></a>工作机制</h4><p>以一个示例来说明整个 AT 分支的工作过程。</p>
+<p>业务表：<code>product</code></p>
+<table>
+<thead>
+<tr>
+<th align="center">Field</th>
+<th align="center">Type</th>
+<th align="center">Key</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">id</td>
+<td align="center">bigint(20)</td>
+<td align="center">PRI</td>
+</tr>
+<tr>
+<td align="center">name</td>
+<td align="center">varchar(100)</td>
+<td align="center"></td>
+</tr>
+<tr>
+<td align="center">since</td>
+<td align="center">varchar(100)</td>
+<td align="center"></td>
+</tr>
+</tbody></table>
+<p>AT 分支事务的业务逻辑：</p>
+<pre><code class="mysql">update product set name = &#39;GTS&#39; where name = &#39;TXC&#39;;</code></pre>
+<h4 id="一阶段"><a href="#一阶段" class="headerlink" title="一阶段"></a>一阶段</h4><ol>
+<li><p>解析 SQL：得到 SQL 的类型（UPDATE），表（product），条件（where name = ‘TXC’）等相关的信息。</p>
+</li>
+<li><p>查询前镜像：根据解析得到的条件信息，生成查询语句，定位数据。</p>
+<pre><code class="mysql">select id, name, since from product where name = &#39;TXC&#39;;
+
+## 得到修改前的镜像
+{
+ id: 1,
+ name: TXC,
+ since: 2014
+}</code></pre>
+<p>得到前镜像</p>
+</li>
+<li><p>执行业务 SQL：更新这条记录的 name 为 ‘GTS’。</p>
+</li>
+<li><p>查询后镜像：根据前镜像的结果，通过 <strong>主键</strong> 定位数据。</p>
+<pre><code class="mysql">select id, name, since from product where id = 1`;
+
+## 得到修改后的镜像
+{
+ id: 1,
+ name: GTS,
+ since: 2014
+}</code></pre>
+</li>
+<li><p>插入回滚日志：把前后镜像数据以及业务 SQL 相关的信息组成一条回滚日志记录，插入到 <code>UNDO_LOG</code> 表中。</p>
+<pre><code class="json">{
+    &quot;branchId&quot;: 641789253,
+    &quot;undoItems&quot;: [{
+        &quot;afterImage&quot;: {
+            &quot;rows&quot;: [{
+                &quot;fields&quot;: [{
+                    &quot;name&quot;: &quot;id&quot;,
+                    &quot;type&quot;: 4,
+                    &quot;value&quot;: 1
+                }, {
+                    &quot;name&quot;: &quot;name&quot;,
+                    &quot;type&quot;: 12,
+                    &quot;value&quot;: &quot;GTS&quot;
+                }, {
+                    &quot;name&quot;: &quot;since&quot;,
+                    &quot;type&quot;: 12,
+                    &quot;value&quot;: &quot;2014&quot;
+                }]
+            }],
+            &quot;tableName&quot;: &quot;product&quot;
+        },
+        &quot;beforeImage&quot;: {
+            &quot;rows&quot;: [{
+                &quot;fields&quot;: [{
+                    &quot;name&quot;: &quot;id&quot;,
+                    &quot;type&quot;: 4,
+                    &quot;value&quot;: 1
+                }, {
+                    &quot;name&quot;: &quot;name&quot;,
+                    &quot;type&quot;: 12,
+                    &quot;value&quot;: &quot;TXC&quot;
+                }, {
+                    &quot;name&quot;: &quot;since&quot;,
+                    &quot;type&quot;: 12,
+                    &quot;value&quot;: &quot;2014&quot;
+                }]
+            }],
+            &quot;tableName&quot;: &quot;product&quot;
+        },
+        &quot;sqlType&quot;: &quot;UPDATE&quot;
+    }],
+    &quot;xid&quot;: &quot;xid:xxx&quot;
+}</code></pre>
+</li>
+<li><p>提交前，向 <code>TC</code> 注册分支：申请 <code>product</code> 表中，主键值等于 1 的记录的 <strong>全局锁</strong> 。</p>
+</li>
+<li><p>本地事务提交：业务数据的更新和前面步骤中生成的 <code>UNDO LOG</code> 一并提交。</p>
+</li>
+<li><p>将本地事务提交的结果上报给 <code>TC</code>。</p>
+</li>
+</ol>
+<h4 id="二阶段-回滚"><a href="#二阶段-回滚" class="headerlink" title="二阶段-回滚"></a>二阶段-回滚</h4><ol>
+<li><p>收到 <code>TC</code>的分支回滚请求，开启一个本地事务，执行如下操作。</p>
+</li>
+<li><p>通过<code>XID</code> 和<code>Branch ID</code> 查找到相应的 <code>UNDO LOG</code> 记录。</p>
+</li>
+<li><p>数据校验：拿 <code>UNDO LOG</code> 中的后镜与当前数据进行比较，如果有不同，说明数据被当前全局事务之外的动作做了修改。这种情况，需要根据配置策略来做处理，详细的说明在另外的文档中介绍。</p>
+</li>
+<li><p>根据 <code>UNDO LOG</code> 中的前镜像和业务 <code>SQL</code> 的相关信息生成并执行回滚的语句：</p>
+<pre><code class="mysql">update product set name = &#39;TXC&#39; where id = 1;</code></pre>
+</li>
+<li><p>提交本地事务。并把本地事务的执行结果（即分支事务回滚的结果）上报给 TC。</p>
+</li>
+</ol>
+<h4 id="二阶段-提交"><a href="#二阶段-提交" class="headerlink" title="二阶段-提交"></a>二阶段-提交</h4><ol>
+<li>收到 <code>TC</code> 的分支提交请求，把请求放入一个异步任务的队列中，马上返回提交成功的结果给 TC。</li>
+<li>异步任务阶段的分支提交请求将异步和批量地删除相应 <code>UNDO LOG</code>记录。</li>
+</ol>
+<h3 id="项目实战"><a href="#项目实战" class="headerlink" title="项目实战"></a>项目实战</h3><blockquote>
+<p>这里只是简单的使用。注册中心采用eureka，网关使用gateway，rpc使用<code>feign</code></p>
+</blockquote>
+<h4 id="工程结构"><a href="#工程结构" class="headerlink" title="工程结构"></a>工程结构</h4><pre><code class="shell">├─account-service    -- 账户服务 --
+├─eureka-server      -- 注册中心 -- 
+├─gateway-service    -- 网关服务 -- 
+├─goods-service      -- 商品服务 --
+└─order-service      -- 订单服务 --</code></pre>
+<h4 id="建表语句"><a href="#建表语句" class="headerlink" title="建表语句"></a>建表语句</h4><h5 id="业务sql"><a href="#业务sql" class="headerlink" title="业务sql"></a>业务sql</h5><pre><code class="mysql">create table account
+(
+    id         bigint unsigned not null primary key auto_increment comment &#39;主键id&#39;,
+    money      decimal(11, 2)  not null default 0 comment &#39;账户余额&#39;,
+    gmt_create timestamp       not null default current_timestamp comment &#39;创建时间&#39;,
+    gmt_modify timestamp       not null default current_timestamp on update current_timestamp comment &#39;修改时间&#39;
+) comment &#39;账户表&#39;;
+
+create table goods
+(
+    id         bigint unsigned not null primary key auto_increment comment &#39;主键id&#39;,
+    name       varchar(32)     not null default &#39;&#39; comment &#39;商品名称&#39;,
+    stock      int unsigned    not null default 0 comment &#39;库存数量&#39;,
+    price      decimal(11, 2)  not null default 0 comment &#39;商品价格&#39;,
+    gmt_create timestamp       not null default current_timestamp comment &#39;创建时间&#39;,
+    gmt_modify timestamp       not null default current_timestamp on update current_timestamp comment &#39;修改时间&#39;
+) comment &#39;商品表&#39;;
+
+create table order_detail
+(
+    id         bigint unsigned not null primary key auto_increment comment &#39;主键id&#39;,
+    goods_id   bigint unsigned not null comment &#39;商品id&#39;,
+    account_id bigint unsigned not null comment &#39;账户id&#39;,
+    price      decimal(11, 2)  not null default 0 comment &#39;订单价格&#39;,
+    amount     int unsigned    not null default 1 comment &#39;商品数量&#39;,
+    gmt_create timestamp       not null default current_timestamp comment &#39;创建时间&#39;,
+    gmt_modify timestamp       not null default current_timestamp on update current_timestamp comment &#39;修改时间&#39;
+) comment &#39;订单表&#39;;
+
+insert into account(money)
+values (10000);
+insert into goods(name, stock, price)
+values (&#39;华为Meta 30&#39;, 10, 5000.00);</code></pre>
+<h5 id="回滚日志表"><a href="#回滚日志表" class="headerlink" title="回滚日志表"></a>回滚日志表</h5><pre><code class="mysql">CREATE TABLE `undo_log`
+(
+    `id`            bigint(20)   NOT NULL AUTO_INCREMENT,
+    `branch_id`     bigint(20)   NOT NULL comment, 
+    `xid`           varchar(100) NOT NULL,
+    `context`       varchar(128) NOT NULL,
+    `rollback_info` longblob     NOT NULL,
+    `log_status`    int(11)      NOT NULL,
+    `log_created`   datetime     NOT NULL,
+    `log_modified`  datetime     NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `ux_undo_log` (`xid`, `branch_id`)
+) ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8;</code></pre>
+<h4 id="项目配置文件"><a href="#项目配置文件" class="headerlink" title="项目配置文件"></a>项目配置文件</h4><p><code>application.yml</code></p>
+<pre><code class="yaml"># 在项目中加入seata的事务分组配置
+spring:  
+  cloud:
+    alibaba:
+      seata:
+        tx-service-group: eyestarrysky-seata</code></pre>
+<p>在<code>Seata</code>项目提供的<code>file.conf</code>中加入如下配置</p>
+<pre><code class="properties">## transaction log store
+store {
+  # 修改数据库配置
+  ## database store
+  db {
+    datasource = &quot;druid&quot;
+    db-type = &quot;mysql&quot;
+    driver-class-name = &quot;com.mysql.jdbc.Driver&quot;
+    url = &quot;jdbc:mysql://xxx:3306/seata&quot;
+    user = &quot;xxx&quot;
+    password = &quot;xxx&quot;
+  }
+
+}
+service {
+  # 这里记得配置事务分组(eyestarrysky-seata)
+  vgroup_mapping.eyestarrysky-seata = &quot;default&quot;
+  default.grouplist = &quot;127.0.0.1:8091&quot;
+  enableDegrade = false
+  # disable seata
+  disableGlobalTransaction = false
+}</code></pre>
+<h4 id="项目启动"><a href="#项目启动" class="headerlink" title="项目启动"></a>项目启动</h4><ul>
+<li><p>启动<code>seata-server</code> </p>
+</li>
+<li><p>依次启动<strong>注册中心</strong>，<strong>网关中心</strong>和<strong>业务工程</strong></p>
+</li>
+</ul>
+<h4 id="业务流程"><a href="#业务流程" class="headerlink" title="业务流程"></a>业务流程</h4><ul>
+<li>下图解释了<code>TC</code>，<code>TM</code>，<code>RM</code>在项目中的具体角色和业务流程 （<a href="#Seata术语">名词解释</a>）</li>
+</ul>
+<p><img src="http://qiniu.eyestarrysky.top/seata%E5%9B%BE%E7%89%87.png" alt="原谅我手残"></p>
+<ol>
+<li>调用订单服务下单接口</li>
+<li>订单服务调用商品服务检查库存</li>
+<li>订单服务调用账户服务检查账户余额</li>
+<li>本地事务-生成订单</li>
+<li>远程事务扣减库存</li>
+<li>账户服务扣减账户余额</li>
+</ol>
+<ul>
+<li>简单看下代码，使用非常方便，在<code>OrderService</code>中的提交订单方法上加 <font style="color:red"><code>@GlobalTransactional</code></font>注解，<code>name</code>的值应该填充为<code>application.yml</code>中配置的事务分组名称<strong>eyestarrysky-seata</strong>，<code>flag</code>字段方便我在测试接口时控制提交，和回滚</li>
+</ul>
+<pre><code class="java">@GlobalTransactional(name = &quot;eyestarrysky-seata&quot;, rollbackFor = Exception.class)
+public void submitOrder(Long goodsId, Long accountId, Integer amount, Integer flag) {
+    //查询商品
+    Goods goods = goodsClient.findById(goodsId);
+    if (goods == null) {
+        throw new IllegalArgumentException(&quot;商品数据找不到&quot;);
+    }
+    if (goods.getStock() &lt; amount) {
+        log.warn(&quot;【生成订单失败，商品库存不足】商品信息: {}, 购买数量amount = {}&quot;, JSON.toJSONString(goods), amount);
+        return;
+    }
+    BigDecimal orderPrice = goods.getPrice().multiply(BigDecimal.valueOf(amount));
+
+    Account account = accountClient.findOneAccount(accountId);
+    if (account == null) {
+        throw new IllegalArgumentException(&quot;账户找不到&quot;);
+    }
+    if (account.getMoney().compareTo(orderPrice) &lt; 0) {
+        log.warn(&quot;【生成订单失败，账户余额不足】账户余额: {}, 订单总额amount = {}&quot;, account.getMoney(), orderPrice);
+        return;
+    }
+    OrderDetail orderDetail = new OrderDetail();
+    orderDetail.setAccountId(accountId);
+    orderDetail.setAmount(amount);
+    orderDetail.setGoodsId(goodsId);
+    orderDetail.setPrice(orderPrice);
+    //1.本地事务-扣减库存
+    orderDetailMapper.insert(orderDetail);
+
+    //2. 远程事务-扣减库存
+    goodsClient.reduceStock(goodsId, amount);
+    //3. 远程事务-扣减余额
+    accountClient.deductionMoney(accountId, orderPrice);
+
+    if (flag &gt; 0) {
+        log.error(&quot;【发生异常，事务回滚】&quot;);
+        throw new RuntimeException(&quot;回滚事务&quot;);
+    }
+}</code></pre>
+<h4 id="事务执行中的数据情况"><a href="#事务执行中的数据情况" class="headerlink" title="事务执行中的数据情况"></a>事务执行中的数据情况</h4><ul>
+<li><p>商品数据</p>
+<pre><code class="json">{
+    &quot;id&quot;: 1,
+    &quot;price&quot;: 5000
+    &quot;stock&quot;: 6
+}</code></pre>
+</li>
+<li><p>账户数据</p>
+<pre><code class="json">{
+    &quot;id&quot;: 1,
+    &quot;money&quot;: 30000.00,
+    &quot;gmtCreate&quot;: &quot;2020-09-08T17:26:44.000+00:00&quot;,
+    &quot;gmtModify&quot;: &quot;2021-05-28T08:56:33.000+00:00&quot;
+}</code></pre>
+</li>
+</ul>
+<h5 id="正常下单"><a href="#正常下单" class="headerlink" title="正常下单"></a>正常下单</h5><pre><code class="json"># 购买商品一件，订单正常生成
+# 商品
+{
+    &quot;id&quot;: 1,
+    &quot;price&quot;: 5000
+    &quot;stock&quot;: 5
+}
+
+# 账户
+{
+    &quot;id&quot;: 1,
+    &quot;money&quot;: 25000.00,
+    &quot;gmtCreate&quot;: &quot;2020-09-08T17:26:44.000+00:00&quot;,
+    &quot;gmtModify&quot;: &quot;2021-05-28T08:56:33.000+00:00&quot;
+}</code></pre>
+<h5 id="日志打印"><a href="#日志打印" class="headerlink" title="日志打印"></a>日志打印</h5><pre><code class="json"># 订单生成前，开启事务，并生成xid 
+i.seata.tm.api.DefaultGlobalTransaction  : Begin new global transaction [172.17.0.2:8091:141593301408030720]
+# 生成订单完成 --&gt; 扣减商品库存前
+# 此时undo_log表里面写入一条数据
+{
+    &quot;branch_id&quot;: 141593374497972224,
+    &quot;xid&quot;: &quot;172.17.0.2:8091:141593301408030720&quot;,
+    &quot;rollback_info&quot;: &quot;xxx&quot;
+}
+
+# 扣减库存完成，undo_log表多了一条数据,xid是相同的
+{
+    &quot;branch_id&quot;: 141594493718634496,
+    &quot;xid&quot;: &quot;172.17.0.2:8091:141593301408030720&quot;,
+    &quot;rollback_info&quot;: &quot;xxx&quot;
+}</code></pre>
+<h5 id="订单下单失败的情况"><a href="#订单下单失败的情况" class="headerlink" title="订单下单失败的情况"></a>订单下单失败的情况</h5><ul>
+<li>这里我简单的测试了3种情况<ol>
+<li>下单超时情况（全局事务未提交前），回滚成功</li>
+<li>本地事务发生异常，回滚成功</li>
+<li>分支事务发生异常，回滚成功</li>
+</ol>
+</li>
+</ul>
+<h3 id="写在最后"><a href="#写在最后" class="headerlink" title="写在最后"></a>写在最后</h3><ul>
+<li>这篇文章只是对<code>seata</code>的简单介绍和应用，后面我会另写一篇文章（埋个坑）来从源码的角度更深入地分析，<code>seata</code>是如何处理分布式事务的。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>分布式事务</category>
+      </categories>
+      <tags>
+        <tag>seata</tag>
+        <tag>分布式事务</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>分布式协议与算法-Raft算法</title>
+    <url>/2020/09/05/%E5%88%86%E5%B8%83%E5%BC%8F%E5%8D%8F%E8%AE%AE%E4%B8%8E%E7%AE%97%E6%B3%95-Raft%E7%AE%97%E6%B3%95/</url>
+    <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><blockquote>
+<p>为了对分布式系统有更深的理解，也为了我的技术成长提供更多可能性，我花了部分时间对目前分布式系统设计中比较常用或者重要的算法进行了学习，最终整理出这篇文章。以前学习时，对于分布式，高可用，集群，leader选举等一系列核心问题都是一知半解，希望日后我也能时常勉励自己，有时间可以再回过头来看看这篇博客，做到见微知著，举一反三。</p>
+</blockquote>
+<h3 id="Paxos算法简介"><a href="#Paxos算法简介" class="headerlink" title="Paxos算法简介"></a>Paxos算法简介</h3><ul>
+<li><p>我看了很多文章，对于<code>Paxos</code>算法还是一知半解，所以这里只是对<code>Paxos</code>算法做简单的总结。</p>
+</li>
+<li><p><code>Paxos</code>算法包含两个重要部分</p>
+<ol>
+<li><code>Basic-Paxos</code>算法，描述的是多节点之间如何就某个提案达成共识</li>
+<li><code>Muti-Paxos</code>算法，描述的是执行多个<code>Basic-Paxos</code>实例，就一系列提案达成共识。下面要说的的<code>Raft</code>算法就是基于<code>Multi-Paxos</code>思想的共识算法之一。</li>
+</ol>
+</li>
+</ul>
+<h3 id="Raft算法"><a href="#Raft算法" class="headerlink" title="Raft算法"></a>Raft算法</h3><ul>
+<li><code>Raft</code>算法是现在分布式系统开发首选的共识算法。</li>
+<li><code>Raft</code>算法是强领导者模型，集群中只能有一个<code>Leader</code></li>
+</ul>
+<h4 id="成员身份"><a href="#成员身份" class="headerlink" title="成员身份"></a>成员身份</h4><ol>
+<li><code>Follower</code>：接收和处理来自<code>Leader</code>的消息，跟<code>Leader</code>心跳超时时，就变为<code>Candidate</code></li>
+<li><code>Candidate</code>：候选人向其他节点发送<code>RPC</code>消息请求投票，通知它们投票，如果赢得了大多数选票就晋升为<code>Leader</code></li>
+<li><code>Leader</code>：处理写请求，管理日志复制和不断发送心跳消息，通知其他节点。</li>
+</ol>
+<h4 id="Leader选举"><a href="#Leader选举" class="headerlink" title="Leader选举"></a>Leader选举</h4><ul>
+<li>初始状态时，集群中所有的节点都是跟随者的状态。<code>Raft</code>实现了随机超时时间的特性，每个节点等待领导者节点心跳信息的超时时间间隔是随机的。可以看到，下图中节点A会最先因为没有收到<code>leader</code>心跳信息发生超时。这个时候节点A就会增加自己的任期编号，并且推举自己为<code>Candidate</code>，并给自己投上一票，然后向其他节点发送<code>RPC</code>请求投票。</li>
+</ul>
+<p><img src="http://qiniu.eyestarrysky.top/Raft%E7%AE%97%E6%B3%95-Leader%E9%80%89%E4%B8%BE1.png" alt=""></p>
+<ul>
+<li><p>其他节点收到候选者A的投票请求，在编号为1的这届任期没有进行过投票，那么它将把选票投给A，并增加自己的任期编号。</p>
+</li>
+<li><p>如果候选人A在选举超时时间内赢得了大多数的选票，那么它就会成为本届任期内新的<code>Leader</code></p>
+</li>
+<li><p>节点A当选<code>Leader</code>后，他将周期性地发送心跳消息，通知其他服务器我是领导者，阻止跟随者发起新的选举</p>
+</li>
+</ul>
+<h4 id="日志复制"><a href="#日志复制" class="headerlink" title="日志复制"></a>日志复制</h4><h5 id="日志的基本介绍"><a href="#日志的基本介绍" class="headerlink" title="日志的基本介绍"></a>日志的基本介绍</h5><blockquote>
+<p>在 Raft 算法中，副本数据是以日志的形式存在的，领导者接收到来自客户端写请求后，处理写请求的过程就是一个复制和提交日志项的过程。</p>
+</blockquote>
+<ul>
+<li><h5 id="日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log-index）、任期编号（Term）。"><a href="#日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log-index）、任期编号（Term）。" class="headerlink" title="日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log index）、任期编号（Term）。"></a>日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log index）、任期编号（Term）。</h5></li>
+</ul>
+<p><img src="http://qiniu.eyestarrysky.top/Raft%E6%97%A5%E5%BF%97%E9%A1%B9.png" alt=""></p>
+<ul>
+<li>需要注意的是，<strong><font style="color:red">一届Leader任期内，往往有多条日志项，而且日志项的索引值是连续的。</font></strong></li>
+</ul>
+<h5 id="日志复制的过程"><a href="#日志复制的过程" class="headerlink" title="日志复制的过程"></a>日志复制的过程</h5><ul>
+<li><p>首先，领导者进入第一阶段，通过日志复制(AppendEntries) RPC 消息，将日志项复制到集群其他节点上。接着，如果领导者接收到大多数的”复制成功”响应后，它将日志项提交到它的状态机，并返回成功给客户端。如果领导者没有接收到大多数的”复制成功”响应，那么就返回错误给客户端。</p>
+</li>
+<li><p>具体而言会分为以下几步：</p>
+<ol>
+<li><code>Leader</code>基于客户端请求的指令，创建一个新的日志项，并附加到本地日志中。</li>
+<li><code>Leader</code>通过日志复制<code>RPC</code>操作，将新的日志项复制到其他服务器。</li>
+<li>当<code>Leader</code>将日志项，成功复制到大多数服务器上的时候，<code>Leader</code>会将这条日志项提交到它的状态机中。</li>
+<li><code>Leader</code>将执行的结果返回给客户端。</li>
+<li>当<code>Leader</code>接收到心跳信息，或者新的日志复制<code>RPC</code>消息后，如果<code>Followers</code>发现<code>Leader</code>已经提交了某条日志项，而它还没提交，那么它就将这条日志项提交到本机的状态机中。</li>
+</ol>
+</li>
+</ul>
+<h4 id="成员变更"><a href="#成员变更" class="headerlink" title="成员变更"></a>成员变更</h4><p>​        日常工作中服务器故障的情况偶尔也会出现，这时就要替换故障的服务器。如果遇到需要改变数据副本（服务器）数的情况，则需要增加或移除集群中的服务器，总的来说，在生产环境中集群的服务器数量是会发生变化的。</p>
+<ul>
+<li>集群的配置：集群中各节点地址的集合。比如节点A、B、C组成的集群，那么集群的配置就是[A、B、C]集合。</li>
+</ul>
+<h5 id="成员变更的带来的问题"><a href="#成员变更的带来的问题" class="headerlink" title="成员变更的带来的问题"></a>成员变更的带来的问题</h5><ul>
+<li>在集群中进行成员变更的最大风险是，可能会同时出现 2 个领导者。比如在进行成员变更时，节点 A、B 和 C 之间发生了分区错误，节点 A、B 组成旧配置中的“大多数”，也就是变更前的 3 节点集群中的“大多数”，那么这时的领导者（节点 A）依旧是领导者。  另一方面，节点 C 和新节点 D、E 组成了新配置的“大多数”，也就是变更后的 5 节点集群中的“大多数”，它们可能会选举出新的领导者（比如节点 C）。那么这时，就出现了同时存在 2 个领导者的情况。 </li>
+</ul>
+<p><img src="http://qiniu.eyestarrysky.top/%E6%88%90%E5%91%98%E5%8F%98%E6%9B%B4%E5%A4%9Aleader.png" alt=""></p>
+<h5 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h5><ul>
+<li>通过单节点变更解决成员变更出现的极端情况。顾名思义，单节点变更就是通过一次变更一个节点实现成员变更。如果需要变更多个节点，就就行多次单节点变更。</li>
+</ul>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><blockquote>
+<p>Raft 不是一致性算法而是共识算法，是一个 Multi-Paxos 算法，实现的是如何就一系列值达成共识。并且，Raft 能容忍少数节点的故障。虽然 Raft 算法能实现强一致性，也就是线性一致性（Linearizability），但需要客户端协议的配合。在实际场景中，我们一般需要根据场景特点，在一致性强度和实现复杂度之间进行权衡。比如 Consul 实现了三种一致性模型。</p>
+</blockquote>
+<ul>
+<li><p><code>default</code>：客户端访问领导者节点执行读操作，领导者确认自己处于稳定状态时（在 leader leasing 时间内），返回本地数据给客户端，否则返回错误给客户端。在这种情况下，客户端是可能读到旧数据的，比如此时发生了网络分区错误，新领导者已经更新过数据，但因为网络故障，旧领导者未更新数据也未退位，仍处于稳定状态。 </p>
+</li>
+<li><p><code>consistent</code>：客户端访问领导者节点执行读操作，领导者在和大多数节点确认自己仍是领导者之后返回本地数据给客户端，否则返回错误给客户端。在这种情况下，客户端读到的都是最新数据。 </p>
+</li>
+<li><p><code>stale</code>：从任意节点读数据，不局限于领导者节点，客户端可能会读到旧数据。 </p>
+<p><strong>一般而言，在实际工程中，Consul 的 consistent 就够用了，可以不用线性一致性，只要能保证写操作完成后，每次读都能读到最新值就可以了。比如为了实现冥等操作，我们使用一个编号 (ID) 来唯一标记一个操作，并使用一个状态字段（nil/done）来标记操作是否已经执行，那么只要我们能保证设置了 ID 对应状态值为 done 后，能立即和一直读到最新状态值就可以了，也就通过防止操作的重复执行，实现了冥等性。</strong> </p>
+</li>
+</ul>
+<p>​      *<em>总的来说，Raft 算法能很好地处理绝大部分场景的一致性问题，在设计分布式系统时，优先考虑 Raft 算法，当 Raft 算法不能满足现有场景需求时，再去调研其他共识算法。 *</em></p>
+]]></content>
+      <categories>
+        <category>分布式</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>利用github和hexo快速搭建个人博客</title>
+    <url>/2020/04/17/%E5%88%A9%E7%94%A8github%E5%92%8Chexo%E5%BF%AB%E9%80%9F%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/</url>
+    <content><![CDATA[<h3 id="一、准备工作"><a href="#一、准备工作" class="headerlink" title="一、准备工作"></a>一、准备工作</h3><h4 id="安装git"><a href="#安装git" class="headerlink" title="安装git"></a>安装git</h4><p><code>git</code>下载地址：<code>http://gitforwindows.org</code></p>
+<h4 id="安装node-js"><a href="#安装node-js" class="headerlink" title="安装node.js"></a>安装node.js</h4><p> <code>node.js</code> 下载地址：<code>http://nodejs.org/en/</code> </p>
+<h3 id="二、本地搭建"><a href="#二、本地搭建" class="headerlink" title="二、本地搭建"></a>二、本地搭建</h3><ul>
+<li><p>选择一个文件夹建一个目录<code>blog</code>存放博客相关文件，文件夹内右键打开<code>git bash here</code>，在窗口中执行以下所有命令</p>
+</li>
+<li><p>用<code>npm</code>安装<code>hexo</code>，由于国内网络高“墙”深院，避免安装缓慢或失败，这里切换阿里的<code>NPM</code>镜像，没办法只能采用迂回战术了。</p>
+</li>
+</ul>
+<pre><code class="sh">$ npm install -g cnpm --registry=http://registry.npm.taobao.org</code></pre>
+<p>用 <code>cnpm</code> 安装 <code>hexo</code></p>
+<pre><code class="sh">$ cnpm install -g hexo-cli
+$ cnpm install hexo --save
+##检查hexo是否安装成功
+$ hexo -v</code></pre>
+<ul>
+<li>在<code>blog</code>文件夹建一个<code>hexo</code>文件存放博客，进入也打开<code>git bash here</code></li>
+</ul>
+<pre><code class="sh">$ hexo init</code></pre>
+<p>初始化成功后，<code>hexo文件</code>夹内会出现如下的文件：</p>
+<p><code>node_modules</code>: 依赖包<br><code>public</code>：存放生成的页面<br><code>scaffolds</code>：生成文章的一些模板<br><code>source</code>：用来存放你的文章<br><code>themes</code>：放下下载的主题<br><code>_config.yml:</code> 博客的核心配置文件（设置主体、标题等属性）</p>
+<ul>
+<li><p>接着需要执行一下<code>cnpm install</code>命令，要不下边的启动会提示命令不合法。</p>
+</li>
+<li><p>最后使用<code>hexo s -g</code>启动安装好的<code>hexo</code></p>
+</li>
+</ul>
+<h3 id="三、托管至GitHub"><a href="#三、托管至GitHub" class="headerlink" title="三、托管至GitHub"></a>三、托管至GitHub</h3><ul>
+<li><p>建立一个仓库，名称为<code>xxx.github.io</code></p>
+</li>
+<li><p>配置<code>_config.xml</code>文件，添加<code>GitHub</code>地址</p>
+</li>
+</ul>
+<pre><code class="yml">deploy:
+  type: git
+  repo: https://github.com/xxx/xxx.github.io.git
+  branch: master</code></pre>
+<ul>
+<li>安装部署命令<code>deploy-git</code> ，这样你才能用命令部署到<code>GitHub</code></li>
+</ul>
+<pre><code class="sh">$ cnpm install hexo-deployer-git  --save</code></pre>
+<ul>
+<li>安装好后，依次执行下列命令，提交本地<code>hexo</code>文件到<code>GitHub</code></li>
+</ul>
+<pre><code class="sh">$ hexo clean
+$ hexo generate
+$ hexo deploy</code></pre>
+<ul>
+<li>最后访问<code>https://xxx.github.io.git</code>即可</li>
+</ul>
+<h3 id="四、选择自己喜欢的主题"><a href="#四、选择自己喜欢的主题" class="headerlink" title="四、选择自己喜欢的主题"></a>四、选择自己喜欢的主题</h3><ul>
+<li><p>到<code>http://hexo.io/themes/</code>下载主题，<code>git clone</code>到本地</p>
+<p><code>git clone https://github.com/iissnan/hexo-theme-next</code></p>
+</li>
+<li><p>修改<code>hexo</code>文件夹下的<code>_config.yml</code>文件中的<code>theme</code>属性</p>
+</li>
+</ul>
+<pre><code class="yml">theme: hexo-theme-next</code></pre>
+<ul>
+<li>再次打包上传即可<pre><code class="sh">$ hexo clean
+$ hexo generate
+$ hexo deploy</code></pre>
+</li>
+</ul>
+<h3 id="五、Hexo基本操作"><a href="#五、Hexo基本操作" class="headerlink" title="五、Hexo基本操作"></a>五、Hexo基本操作</h3><p>博客文章都放在<code>source\_post</code>目录下</p>
+]]></content>
+      <categories>
+        <category>hexo</category>
+        <category>建站</category>
+      </categories>
+      <tags>
+        <tag>建站</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>LeetCode题解-102.二叉树的层序遍历</title>
     <url>/2020/05/14/LeetCode%E9%A2%98%E8%A7%A3-102.%E4%BA%8C%E5%8F%89%E6%A0%91%E7%9A%84%E5%B1%82%E5%BA%8F%E9%81%8D%E5%8E%86/</url>
     <content><![CDATA[<h3 id=""><a href="#" class="headerlink" title=""></a></h3><h3 id="102-二叉树的层序遍历"><a href="#102-二叉树的层序遍历" class="headerlink" title="102.二叉树的层序遍历"></a>102.二叉树的层序遍历</h3><ul>
@@ -717,174 +1270,6 @@ public int deleteUserByIdAndCreateCache(Long userId) {
       </tags>
   </entry>
   <entry>
-    <title>分布式协议与算法-Raft算法</title>
-    <url>/2020/09/05/%E5%88%86%E5%B8%83%E5%BC%8F%E5%8D%8F%E8%AE%AE%E4%B8%8E%E7%AE%97%E6%B3%95-Raft%E7%AE%97%E6%B3%95/</url>
-    <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><blockquote>
-<p>为了对分布式系统有更深的理解，也为了我的技术成长提供更多可能性，我花了部分时间对目前分布式系统设计中比较常用或者重要的算法进行了学习，最终整理出这篇文章。以前学习时，对于分布式，高可用，集群，leader选举等一系列核心问题都是一知半解，希望日后我也能时常勉励自己，有时间可以再回过头来看看这篇博客，做到见微知著，举一反三。</p>
-</blockquote>
-<h3 id="Paxos算法简介"><a href="#Paxos算法简介" class="headerlink" title="Paxos算法简介"></a>Paxos算法简介</h3><ul>
-<li><p>我看了很多文章，对于<code>Paxos</code>算法还是一知半解，所以这里只是对<code>Paxos</code>算法做简单的总结。</p>
-</li>
-<li><p><code>Paxos</code>算法包含两个重要部分</p>
-<ol>
-<li><code>Basic-Paxos</code>算法，描述的是多节点之间如何就某个提案达成共识</li>
-<li><code>Muti-Paxos</code>算法，描述的是执行多个<code>Basic-Paxos</code>实例，就一系列提案达成共识。下面要说的的<code>Raft</code>算法就是基于<code>Multi-Paxos</code>思想的共识算法之一。</li>
-</ol>
-</li>
-</ul>
-<h3 id="Raft算法"><a href="#Raft算法" class="headerlink" title="Raft算法"></a>Raft算法</h3><ul>
-<li><code>Raft</code>算法是现在分布式系统开发首选的共识算法。</li>
-<li><code>Raft</code>算法是强领导者模型，集群中只能有一个<code>Leader</code></li>
-</ul>
-<h4 id="成员身份"><a href="#成员身份" class="headerlink" title="成员身份"></a>成员身份</h4><ol>
-<li><code>Follower</code>：接收和处理来自<code>Leader</code>的消息，跟<code>Leader</code>心跳超时时，就变为<code>Candidate</code></li>
-<li><code>Candidate</code>：候选人向其他节点发送<code>RPC</code>消息请求投票，通知它们投票，如果赢得了大多数选票就晋升为<code>Leader</code></li>
-<li><code>Leader</code>：处理写请求，管理日志复制和不断发送心跳消息，通知其他节点。</li>
-</ol>
-<h4 id="Leader选举"><a href="#Leader选举" class="headerlink" title="Leader选举"></a>Leader选举</h4><ul>
-<li>初始状态时，集群中所有的节点都是跟随者的状态。<code>Raft</code>实现了随机超时时间的特性，每个节点等待领导者节点心跳信息的超时时间间隔是随机的。可以看到，下图中节点A会最先因为没有收到<code>leader</code>心跳信息发生超时。这个时候节点A就会增加自己的任期编号，并且推举自己为<code>Candidate</code>，并给自己投上一票，然后向其他节点发送<code>RPC</code>请求投票。</li>
-</ul>
-<p><img src="http://qiniu.eyestarrysky.top/Raft%E7%AE%97%E6%B3%95-Leader%E9%80%89%E4%B8%BE1.png" alt=""></p>
-<ul>
-<li><p>其他节点收到候选者A的投票请求，在编号为1的这届任期没有进行过投票，那么它将把选票投给A，并增加自己的任期编号。</p>
-</li>
-<li><p>如果候选人A在选举超时时间内赢得了大多数的选票，那么它就会成为本届任期内新的<code>Leader</code></p>
-</li>
-<li><p>节点A当选<code>Leader</code>后，他将周期性地发送心跳消息，通知其他服务器我是领导者，阻止跟随者发起新的选举</p>
-</li>
-</ul>
-<h4 id="日志复制"><a href="#日志复制" class="headerlink" title="日志复制"></a>日志复制</h4><h5 id="日志的基本介绍"><a href="#日志的基本介绍" class="headerlink" title="日志的基本介绍"></a>日志的基本介绍</h5><blockquote>
-<p>在 Raft 算法中，副本数据是以日志的形式存在的，领导者接收到来自客户端写请求后，处理写请求的过程就是一个复制和提交日志项的过程。</p>
-</blockquote>
-<ul>
-<li><h5 id="日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log-index）、任期编号（Term）。"><a href="#日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log-index）、任期编号（Term）。" class="headerlink" title="日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log index）、任期编号（Term）。"></a>日志由日志项组成。而日志项主要包含用户指定的数据，也就是指令（Command），还包含一些附加信息，比如索引值（Log index）、任期编号（Term）。</h5></li>
-</ul>
-<p><img src="http://qiniu.eyestarrysky.top/Raft%E6%97%A5%E5%BF%97%E9%A1%B9.png" alt=""></p>
-<ul>
-<li>需要注意的是，<strong><font style="color:red">一届Leader任期内，往往有多条日志项，而且日志项的索引值是连续的。</font></strong></li>
-</ul>
-<h5 id="日志复制的过程"><a href="#日志复制的过程" class="headerlink" title="日志复制的过程"></a>日志复制的过程</h5><ul>
-<li><p>首先，领导者进入第一阶段，通过日志复制(AppendEntries) RPC 消息，将日志项复制到集群其他节点上。接着，如果领导者接收到大多数的”复制成功”响应后，它将日志项提交到它的状态机，并返回成功给客户端。如果领导者没有接收到大多数的”复制成功”响应，那么就返回错误给客户端。</p>
-</li>
-<li><p>具体而言会分为以下几步：</p>
-<ol>
-<li><code>Leader</code>基于客户端请求的指令，创建一个新的日志项，并附加到本地日志中。</li>
-<li><code>Leader</code>通过日志复制<code>RPC</code>操作，将新的日志项复制到其他服务器。</li>
-<li>当<code>Leader</code>将日志项，成功复制到大多数服务器上的时候，<code>Leader</code>会将这条日志项提交到它的状态机中。</li>
-<li><code>Leader</code>将执行的结果返回给客户端。</li>
-<li>当<code>Leader</code>接收到心跳信息，或者新的日志复制<code>RPC</code>消息后，如果<code>Followers</code>发现<code>Leader</code>已经提交了某条日志项，而它还没提交，那么它就将这条日志项提交到本机的状态机中。</li>
-</ol>
-</li>
-</ul>
-<h4 id="成员变更"><a href="#成员变更" class="headerlink" title="成员变更"></a>成员变更</h4><p>​        日常工作中服务器故障的情况偶尔也会出现，这时就要替换故障的服务器。如果遇到需要改变数据副本（服务器）数的情况，则需要增加或移除集群中的服务器，总的来说，在生产环境中集群的服务器数量是会发生变化的。</p>
-<ul>
-<li>集群的配置：集群中各节点地址的集合。比如节点A、B、C组成的集群，那么集群的配置就是[A、B、C]集合。</li>
-</ul>
-<h5 id="成员变更的带来的问题"><a href="#成员变更的带来的问题" class="headerlink" title="成员变更的带来的问题"></a>成员变更的带来的问题</h5><ul>
-<li>在集群中进行成员变更的最大风险是，可能会同时出现 2 个领导者。比如在进行成员变更时，节点 A、B 和 C 之间发生了分区错误，节点 A、B 组成旧配置中的“大多数”，也就是变更前的 3 节点集群中的“大多数”，那么这时的领导者（节点 A）依旧是领导者。  另一方面，节点 C 和新节点 D、E 组成了新配置的“大多数”，也就是变更后的 5 节点集群中的“大多数”，它们可能会选举出新的领导者（比如节点 C）。那么这时，就出现了同时存在 2 个领导者的情况。 </li>
-</ul>
-<p><img src="http://qiniu.eyestarrysky.top/%E6%88%90%E5%91%98%E5%8F%98%E6%9B%B4%E5%A4%9Aleader.png" alt=""></p>
-<h5 id="解决方案"><a href="#解决方案" class="headerlink" title="解决方案"></a>解决方案</h5><ul>
-<li>通过单节点变更解决成员变更出现的极端情况。顾名思义，单节点变更就是通过一次变更一个节点实现成员变更。如果需要变更多个节点，就就行多次单节点变更。</li>
-</ul>
-<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><blockquote>
-<p>Raft 不是一致性算法而是共识算法，是一个 Multi-Paxos 算法，实现的是如何就一系列值达成共识。并且，Raft 能容忍少数节点的故障。虽然 Raft 算法能实现强一致性，也就是线性一致性（Linearizability），但需要客户端协议的配合。在实际场景中，我们一般需要根据场景特点，在一致性强度和实现复杂度之间进行权衡。比如 Consul 实现了三种一致性模型。</p>
-</blockquote>
-<ul>
-<li><p><code>default</code>：客户端访问领导者节点执行读操作，领导者确认自己处于稳定状态时（在 leader leasing 时间内），返回本地数据给客户端，否则返回错误给客户端。在这种情况下，客户端是可能读到旧数据的，比如此时发生了网络分区错误，新领导者已经更新过数据，但因为网络故障，旧领导者未更新数据也未退位，仍处于稳定状态。 </p>
-</li>
-<li><p><code>consistent</code>：客户端访问领导者节点执行读操作，领导者在和大多数节点确认自己仍是领导者之后返回本地数据给客户端，否则返回错误给客户端。在这种情况下，客户端读到的都是最新数据。 </p>
-</li>
-<li><p><code>stale</code>：从任意节点读数据，不局限于领导者节点，客户端可能会读到旧数据。 </p>
-<p><strong>一般而言，在实际工程中，Consul 的 consistent 就够用了，可以不用线性一致性，只要能保证写操作完成后，每次读都能读到最新值就可以了。比如为了实现冥等操作，我们使用一个编号 (ID) 来唯一标记一个操作，并使用一个状态字段（nil/done）来标记操作是否已经执行，那么只要我们能保证设置了 ID 对应状态值为 done 后，能立即和一直读到最新状态值就可以了，也就通过防止操作的重复执行，实现了冥等性。</strong> </p>
-</li>
-</ul>
-<p>​      *<em>总的来说，Raft 算法能很好地处理绝大部分场景的一致性问题，在设计分布式系统时，优先考虑 Raft 算法，当 Raft 算法不能满足现有场景需求时，再去调研其他共识算法。 *</em></p>
-]]></content>
-      <categories>
-        <category>分布式</category>
-      </categories>
-      <tags>
-        <tag>分布式</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>利用github和hexo快速搭建个人博客</title>
-    <url>/2020/04/17/%E5%88%A9%E7%94%A8github%E5%92%8Chexo%E5%BF%AB%E9%80%9F%E6%90%AD%E5%BB%BA%E4%B8%AA%E4%BA%BA%E5%8D%9A%E5%AE%A2/</url>
-    <content><![CDATA[<h3 id="一、准备工作"><a href="#一、准备工作" class="headerlink" title="一、准备工作"></a>一、准备工作</h3><h4 id="安装git"><a href="#安装git" class="headerlink" title="安装git"></a>安装git</h4><p><code>git</code>下载地址：<code>http://gitforwindows.org</code></p>
-<h4 id="安装node-js"><a href="#安装node-js" class="headerlink" title="安装node.js"></a>安装node.js</h4><p> <code>node.js</code> 下载地址：<code>http://nodejs.org/en/</code> </p>
-<h3 id="二、本地搭建"><a href="#二、本地搭建" class="headerlink" title="二、本地搭建"></a>二、本地搭建</h3><ul>
-<li><p>选择一个文件夹建一个目录<code>blog</code>存放博客相关文件，文件夹内右键打开<code>git bash here</code>，在窗口中执行以下所有命令</p>
-</li>
-<li><p>用<code>npm</code>安装<code>hexo</code>，由于国内网络高“墙”深院，避免安装缓慢或失败，这里切换阿里的<code>NPM</code>镜像，没办法只能采用迂回战术了。</p>
-</li>
-</ul>
-<pre><code class="sh">$ npm install -g cnpm --registry=http://registry.npm.taobao.org</code></pre>
-<p>用 <code>cnpm</code> 安装 <code>hexo</code></p>
-<pre><code class="sh">$ cnpm install -g hexo-cli
-$ cnpm install hexo --save
-##检查hexo是否安装成功
-$ hexo -v</code></pre>
-<ul>
-<li>在<code>blog</code>文件夹建一个<code>hexo</code>文件存放博客，进入也打开<code>git bash here</code></li>
-</ul>
-<pre><code class="sh">$ hexo init</code></pre>
-<p>初始化成功后，<code>hexo文件</code>夹内会出现如下的文件：</p>
-<p><code>node_modules</code>: 依赖包<br><code>public</code>：存放生成的页面<br><code>scaffolds</code>：生成文章的一些模板<br><code>source</code>：用来存放你的文章<br><code>themes</code>：放下下载的主题<br><code>_config.yml:</code> 博客的核心配置文件（设置主体、标题等属性）</p>
-<ul>
-<li><p>接着需要执行一下<code>cnpm install</code>命令，要不下边的启动会提示命令不合法。</p>
-</li>
-<li><p>最后使用<code>hexo s -g</code>启动安装好的<code>hexo</code></p>
-</li>
-</ul>
-<h3 id="三、托管至GitHub"><a href="#三、托管至GitHub" class="headerlink" title="三、托管至GitHub"></a>三、托管至GitHub</h3><ul>
-<li><p>建立一个仓库，名称为<code>xxx.github.io</code></p>
-</li>
-<li><p>配置<code>_config.xml</code>文件，添加<code>GitHub</code>地址</p>
-</li>
-</ul>
-<pre><code class="yml">deploy:
-  type: git
-  repo: https://github.com/xxx/xxx.github.io.git
-  branch: master</code></pre>
-<ul>
-<li>安装部署命令<code>deploy-git</code> ，这样你才能用命令部署到<code>GitHub</code></li>
-</ul>
-<pre><code class="sh">$ cnpm install hexo-deployer-git  --save</code></pre>
-<ul>
-<li>安装好后，依次执行下列命令，提交本地<code>hexo</code>文件到<code>GitHub</code></li>
-</ul>
-<pre><code class="sh">$ hexo clean
-$ hexo generate
-$ hexo deploy</code></pre>
-<ul>
-<li>最后访问<code>https://xxx.github.io.git</code>即可</li>
-</ul>
-<h3 id="四、选择自己喜欢的主题"><a href="#四、选择自己喜欢的主题" class="headerlink" title="四、选择自己喜欢的主题"></a>四、选择自己喜欢的主题</h3><ul>
-<li><p>到<code>http://hexo.io/themes/</code>下载主题，<code>git clone</code>到本地</p>
-<p><code>git clone https://github.com/iissnan/hexo-theme-next</code></p>
-</li>
-<li><p>修改<code>hexo</code>文件夹下的<code>_config.yml</code>文件中的<code>theme</code>属性</p>
-</li>
-</ul>
-<pre><code class="yml">theme: hexo-theme-next</code></pre>
-<ul>
-<li>再次打包上传即可<pre><code class="sh">$ hexo clean
-$ hexo generate
-$ hexo deploy</code></pre>
-</li>
-</ul>
-<h3 id="五、Hexo基本操作"><a href="#五、Hexo基本操作" class="headerlink" title="五、Hexo基本操作"></a>五、Hexo基本操作</h3><p>博客文章都放在<code>source\_post</code>目录下</p>
-]]></content>
-      <categories>
-        <category>hexo</category>
-        <category>建站</category>
-      </categories>
-      <tags>
-        <tag>建站</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>温故知新-redis过期策略及应用</title>
     <url>/2020/05/24/%E6%B8%A9%E6%95%85%E7%9F%A5%E6%96%B0-redis%E8%BF%87%E6%9C%9F%E7%AD%96%E7%95%A5%E5%8F%8A%E5%BA%94%E7%94%A8/</url>
     <content><![CDATA[<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><ul>
@@ -977,391 +1362,6 @@ public class RedisKeyExpirationListener extends KeyExpirationEventMessageListene
       </categories>
       <tags>
         <tag>redis</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>分布式事务解决方案-Seata</title>
-    <url>/2020/05/26/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88-Seata/</url>
-    <content><![CDATA[<h3 id="写在前面的话"><a href="#写在前面的话" class="headerlink" title="写在前面的话"></a>写在前面的话</h3><blockquote>
-<p>好久没有写博客了，不知道写点什么。正好要在公司分享技术，我就想到了好久之前看过的分布式事务的框架seata。趁着这个机会，查漏补缺，整理一篇博客出来，从理论到实战，让我对其设计思想，实际应用又更多一分认识。</p>
-</blockquote>
-<h3 id="什么是Seata"><a href="#什么是Seata" class="headerlink" title="什么是Seata?"></a>什么是Seata?</h3><ul>
-<li>Seata 是一款开源的分布式事务解决方案，致力于提供高性能和简单易用的分布式事务服务。Seata 将为用户提供了 AT、TCC、SAGA 和 XA 事务模式，为用户打造一站式的分布式解决方案。 </li>
-</ul>
-<h4 id="Seata术语"><a href="#Seata术语" class="headerlink" title="Seata术语"></a>Seata术语</h4><ul>
-<li>TC (Transaction Coordinator) - 事务协调者： 维护全局和分支事务的状态，驱动全局事务提交或回滚。 </li>
-<li>TM (Transaction Manager) - 事务管理器： 定义全局事务的范围：开始全局事务、提交或回滚全局事务。 </li>
-<li>RM (Resource Manager) - 资源管理器： 管理分支事务处理的资源，与TC交谈以注册分支事务和报告分支事务的状态，并驱动分支事务提交或回滚。 </li>
-</ul>
-<h3 id="事务模式-AT模式"><a href="#事务模式-AT模式" class="headerlink" title="事务模式-AT模式"></a>事务模式-AT模式</h3><p><strong>本质是对两阶段提交协议的演变</strong></p>
-<ul>
-<li>一阶段：业务数据和回滚的日志记录在同一个本地事务中提交。</li>
-<li>二阶段：<ul>
-<li>提交异步化</li>
-<li>如果发生异常，回滚通过一阶段提交的回滚日志进行反向补偿</li>
-</ul>
-</li>
-</ul>
-<h4 id="写隔离-重要"><a href="#写隔离-重要" class="headerlink" title="写隔离 (重要)"></a>写隔离 <font style="color:red;">(重要)</font></h4><ul>
-<li>一阶段提交本地事务需要拿到<strong>全局锁</strong></li>
-<li>二阶段全局回滚需要拿到对应分支数据的<strong>本地锁</strong></li>
-</ul>
-<p>这里拿官方文档的示例说明（不是我懒，官方的图挺好的）:</p>
-<ul>
-<li>这里有两个全局事务，<code>tx1</code>和<code>tx2</code>，分别对一张表的m字段进行更新操作</li>
-<li>由图可知，<code>tx1</code>先开启本地事务拿本地锁，执行更新操作<code>update a set m = m - 100 where id = 1</code>。然后获取全局锁。如果拿到全局事务锁，就提交本地事务，释放本地锁。此后<code>tx2</code>开启事务，执行更新操作，然后尝试去获取<code>全局锁</code>，此时<code>全局锁</code>被<code>tx1</code>持有，于是<code>tx2</code>就进行重试并等待<code>全局锁</code>。</li>
-</ul>
-<p><img src="https://img.alicdn.com/tfs/TB1zaknwVY7gK0jSZKzXXaikpXa-702-521.png" alt=""></p>
-<ul>
-<li><code>tx1</code>二阶段全局提交，释放<code>全局锁</code>，然后<code>tx2</code>才能拿到<code>全局锁</code>提交本地事务</li>
-</ul>
-<p><img src="https://img.alicdn.com/tfs/TB1xW0UwubviK0jSZFNXXaApXXa-718-521.png" alt=""></p>
-<ul>
-<li><p>如果<code>tx1</code>的二阶段全局回滚，那么<code>tx1</code>需要重新获取其数据（对应分支）的本地锁进行反向补偿。这时如果<code>tx2</code>还在等待全局锁，同时持有本地锁，那么<code>tx1</code>拿不到对应数据的本地锁的本地分支就会回滚失败。分支的回滚就会进行重试，直到<code>tx2</code>的全局锁获取等待超时，于是放弃全局锁，并回滚本地事务释放本地锁，这时<code>tx1</code>拿到本地锁就回滚成功。</p>
-</li>
-<li><p>由于整个过程<code>tx1</code>一直持有<code>全局锁</code>，所以不会发生<code>赃写</code>的问题</p>
-</li>
-</ul>
-<h4 id="读隔离-重要"><a href="#读隔离-重要" class="headerlink" title="读隔离 (重要)"></a>读隔离 <font style="color:red;">(重要)</font></h4><ul>
-<li>在数据库本地事务隔离级别 <strong>读已提交（Read Committed）</strong> 或以上的基础上，<code>Seata（AT 模式）</code>的默认全局隔离级别是 <strong>读未提交（Read Uncommitted）</strong> 。如果应用在特定场景下，必需要求全局的 <strong>读已提交</strong> ，目前 <code>Seata</code> 的方式是通过 <code>SELECT FOR UPDATE</code> 语句的代理。</li>
-</ul>
-<p><img src="https://img.alicdn.com/tfs/TB138wuwYj1gK0jSZFuXXcrHpXa-724-521.png" alt=""></p>
-<ul>
-<li>如图所示，执行<code>select for update</code>时会申请全局锁，如果全局锁被其他事务持有，则释放本地锁并重试。整个过程，查询是<code>block</code>的，直到拿到全局锁。即读取到的数据是<code>已提交</code>的，才将数据返回。</li>
-</ul>
-<h4 id="工作机制"><a href="#工作机制" class="headerlink" title="工作机制"></a>工作机制</h4><p>以一个示例来说明整个 AT 分支的工作过程。</p>
-<p>业务表：<code>product</code></p>
-<table>
-<thead>
-<tr>
-<th align="center">Field</th>
-<th align="center">Type</th>
-<th align="center">Key</th>
-</tr>
-</thead>
-<tbody><tr>
-<td align="center">id</td>
-<td align="center">bigint(20)</td>
-<td align="center">PRI</td>
-</tr>
-<tr>
-<td align="center">name</td>
-<td align="center">varchar(100)</td>
-<td align="center"></td>
-</tr>
-<tr>
-<td align="center">since</td>
-<td align="center">varchar(100)</td>
-<td align="center"></td>
-</tr>
-</tbody></table>
-<p>AT 分支事务的业务逻辑：</p>
-<pre><code class="mysql">update product set name = &#39;GTS&#39; where name = &#39;TXC&#39;;</code></pre>
-<h4 id="一阶段"><a href="#一阶段" class="headerlink" title="一阶段"></a>一阶段</h4><ol>
-<li><p>解析 SQL：得到 SQL 的类型（UPDATE），表（product），条件（where name = ‘TXC’）等相关的信息。</p>
-</li>
-<li><p>查询前镜像：根据解析得到的条件信息，生成查询语句，定位数据。</p>
-<pre><code class="mysql">select id, name, since from product where name = &#39;TXC&#39;;
-
-## 得到修改前的镜像
-{
- id: 1,
- name: TXC,
- since: 2014
-}</code></pre>
-<p>得到前镜像</p>
-</li>
-<li><p>执行业务 SQL：更新这条记录的 name 为 ‘GTS’。</p>
-</li>
-<li><p>查询后镜像：根据前镜像的结果，通过 <strong>主键</strong> 定位数据。</p>
-<pre><code class="mysql">select id, name, since from product where id = 1`;
-
-## 得到修改后的镜像
-{
- id: 1,
- name: GTS,
- since: 2014
-}</code></pre>
-</li>
-<li><p>插入回滚日志：把前后镜像数据以及业务 SQL 相关的信息组成一条回滚日志记录，插入到 <code>UNDO_LOG</code> 表中。</p>
-<pre><code class="json">{
-    &quot;branchId&quot;: 641789253,
-    &quot;undoItems&quot;: [{
-        &quot;afterImage&quot;: {
-            &quot;rows&quot;: [{
-                &quot;fields&quot;: [{
-                    &quot;name&quot;: &quot;id&quot;,
-                    &quot;type&quot;: 4,
-                    &quot;value&quot;: 1
-                }, {
-                    &quot;name&quot;: &quot;name&quot;,
-                    &quot;type&quot;: 12,
-                    &quot;value&quot;: &quot;GTS&quot;
-                }, {
-                    &quot;name&quot;: &quot;since&quot;,
-                    &quot;type&quot;: 12,
-                    &quot;value&quot;: &quot;2014&quot;
-                }]
-            }],
-            &quot;tableName&quot;: &quot;product&quot;
-        },
-        &quot;beforeImage&quot;: {
-            &quot;rows&quot;: [{
-                &quot;fields&quot;: [{
-                    &quot;name&quot;: &quot;id&quot;,
-                    &quot;type&quot;: 4,
-                    &quot;value&quot;: 1
-                }, {
-                    &quot;name&quot;: &quot;name&quot;,
-                    &quot;type&quot;: 12,
-                    &quot;value&quot;: &quot;TXC&quot;
-                }, {
-                    &quot;name&quot;: &quot;since&quot;,
-                    &quot;type&quot;: 12,
-                    &quot;value&quot;: &quot;2014&quot;
-                }]
-            }],
-            &quot;tableName&quot;: &quot;product&quot;
-        },
-        &quot;sqlType&quot;: &quot;UPDATE&quot;
-    }],
-    &quot;xid&quot;: &quot;xid:xxx&quot;
-}</code></pre>
-</li>
-<li><p>提交前，向 <code>TC</code> 注册分支：申请 <code>product</code> 表中，主键值等于 1 的记录的 <strong>全局锁</strong> 。</p>
-</li>
-<li><p>本地事务提交：业务数据的更新和前面步骤中生成的 <code>UNDO LOG</code> 一并提交。</p>
-</li>
-<li><p>将本地事务提交的结果上报给 <code>TC</code>。</p>
-</li>
-</ol>
-<h4 id="二阶段-回滚"><a href="#二阶段-回滚" class="headerlink" title="二阶段-回滚"></a>二阶段-回滚</h4><ol>
-<li><p>收到 <code>TC</code>的分支回滚请求，开启一个本地事务，执行如下操作。</p>
-</li>
-<li><p>通过<code>XID</code> 和<code>Branch ID</code> 查找到相应的 <code>UNDO LOG</code> 记录。</p>
-</li>
-<li><p>数据校验：拿 <code>UNDO LOG</code> 中的后镜与当前数据进行比较，如果有不同，说明数据被当前全局事务之外的动作做了修改。这种情况，需要根据配置策略来做处理，详细的说明在另外的文档中介绍。</p>
-</li>
-<li><p>根据 <code>UNDO LOG</code> 中的前镜像和业务 <code>SQL</code> 的相关信息生成并执行回滚的语句：</p>
-<pre><code class="mysql">update product set name = &#39;TXC&#39; where id = 1;</code></pre>
-</li>
-<li><p>提交本地事务。并把本地事务的执行结果（即分支事务回滚的结果）上报给 TC。</p>
-</li>
-</ol>
-<h4 id="二阶段-提交"><a href="#二阶段-提交" class="headerlink" title="二阶段-提交"></a>二阶段-提交</h4><ol>
-<li>收到 <code>TC</code> 的分支提交请求，把请求放入一个异步任务的队列中，马上返回提交成功的结果给 TC。</li>
-<li>异步任务阶段的分支提交请求将异步和批量地删除相应 <code>UNDO LOG</code>记录。</li>
-</ol>
-<h3 id="项目实战"><a href="#项目实战" class="headerlink" title="项目实战"></a>项目实战</h3><blockquote>
-<p>这里只是简单的使用。注册中心采用eureka，网关使用gateway，rpc使用<code>feign</code></p>
-</blockquote>
-<h4 id="工程结构"><a href="#工程结构" class="headerlink" title="工程结构"></a>工程结构</h4><pre><code class="shell">├─account-service    -- 账户服务 --
-├─eureka-server      -- 注册中心 -- 
-├─gateway-service    -- 网关服务 -- 
-├─goods-service      -- 商品服务 --
-└─order-service      -- 订单服务 --</code></pre>
-<h4 id="建表语句"><a href="#建表语句" class="headerlink" title="建表语句"></a>建表语句</h4><h5 id="业务sql"><a href="#业务sql" class="headerlink" title="业务sql"></a>业务sql</h5><pre><code class="mysql">create table account
-(
-    id         bigint unsigned not null primary key auto_increment comment &#39;主键id&#39;,
-    money      decimal(11, 2)  not null default 0 comment &#39;账户余额&#39;,
-    gmt_create timestamp       not null default current_timestamp comment &#39;创建时间&#39;,
-    gmt_modify timestamp       not null default current_timestamp on update current_timestamp comment &#39;修改时间&#39;
-) comment &#39;账户表&#39;;
-
-create table goods
-(
-    id         bigint unsigned not null primary key auto_increment comment &#39;主键id&#39;,
-    name       varchar(32)     not null default &#39;&#39; comment &#39;商品名称&#39;,
-    stock      int unsigned    not null default 0 comment &#39;库存数量&#39;,
-    price      decimal(11, 2)  not null default 0 comment &#39;商品价格&#39;,
-    gmt_create timestamp       not null default current_timestamp comment &#39;创建时间&#39;,
-    gmt_modify timestamp       not null default current_timestamp on update current_timestamp comment &#39;修改时间&#39;
-) comment &#39;商品表&#39;;
-
-create table order_detail
-(
-    id         bigint unsigned not null primary key auto_increment comment &#39;主键id&#39;,
-    goods_id   bigint unsigned not null comment &#39;商品id&#39;,
-    account_id bigint unsigned not null comment &#39;账户id&#39;,
-    price      decimal(11, 2)  not null default 0 comment &#39;订单价格&#39;,
-    amount     int unsigned    not null default 1 comment &#39;商品数量&#39;,
-    gmt_create timestamp       not null default current_timestamp comment &#39;创建时间&#39;,
-    gmt_modify timestamp       not null default current_timestamp on update current_timestamp comment &#39;修改时间&#39;
-) comment &#39;订单表&#39;;
-
-insert into account(money)
-values (10000);
-insert into goods(name, stock, price)
-values (&#39;华为Meta 30&#39;, 10, 5000.00);</code></pre>
-<h5 id="回滚日志表"><a href="#回滚日志表" class="headerlink" title="回滚日志表"></a>回滚日志表</h5><pre><code class="mysql">CREATE TABLE `undo_log`
-(
-    `id`            bigint(20)   NOT NULL AUTO_INCREMENT,
-    `branch_id`     bigint(20)   NOT NULL comment, 
-    `xid`           varchar(100) NOT NULL,
-    `context`       varchar(128) NOT NULL,
-    `rollback_info` longblob     NOT NULL,
-    `log_status`    int(11)      NOT NULL,
-    `log_created`   datetime     NOT NULL,
-    `log_modified`  datetime     NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `ux_undo_log` (`xid`, `branch_id`)
-) ENGINE = InnoDB AUTO_INCREMENT = 1 DEFAULT CHARSET = utf8;</code></pre>
-<h4 id="项目配置文件"><a href="#项目配置文件" class="headerlink" title="项目配置文件"></a>项目配置文件</h4><p><code>application.yml</code></p>
-<pre><code class="yaml"># 在项目中加入seata的事务分组配置
-spring:  
-  cloud:
-    alibaba:
-      seata:
-        tx-service-group: eyestarrysky-seata</code></pre>
-<p>在<code>Seata</code>项目提供的<code>file.conf</code>中加入如下配置</p>
-<pre><code class="properties">## transaction log store
-store {
-  # 修改数据库配置
-  ## database store
-  db {
-    datasource = &quot;druid&quot;
-    db-type = &quot;mysql&quot;
-    driver-class-name = &quot;com.mysql.jdbc.Driver&quot;
-    url = &quot;jdbc:mysql://xxx:3306/seata&quot;
-    user = &quot;xxx&quot;
-    password = &quot;xxx&quot;
-  }
-
-}
-service {
-  # 这里记得配置事务分组(eyestarrysky-seata)
-  vgroup_mapping.eyestarrysky-seata = &quot;default&quot;
-  default.grouplist = &quot;127.0.0.1:8091&quot;
-  enableDegrade = false
-  # disable seata
-  disableGlobalTransaction = false
-}</code></pre>
-<h4 id="项目启动"><a href="#项目启动" class="headerlink" title="项目启动"></a>项目启动</h4><ul>
-<li><p>启动<code>seata-server</code> </p>
-</li>
-<li><p>依次启动<strong>注册中心</strong>，<strong>网关中心</strong>和<strong>业务工程</strong></p>
-</li>
-</ul>
-<h4 id="业务流程"><a href="#业务流程" class="headerlink" title="业务流程"></a>业务流程</h4><ul>
-<li>下图解释了<code>TC</code>，<code>TM</code>，<code>RM</code>在项目中的具体角色和业务流程 （<a href="#Seata术语">名词解释</a>）</li>
-</ul>
-<p><img src="http://qiniu.eyestarrysky.top/seata%E5%9B%BE%E7%89%87.png" alt="原谅我手残"></p>
-<ol>
-<li>调用订单服务下单接口</li>
-<li>订单服务调用商品服务检查库存</li>
-<li>订单服务调用账户服务检查账户余额</li>
-<li>本地事务-生成订单</li>
-<li>远程事务扣减库存</li>
-<li>账户服务扣减账户余额</li>
-</ol>
-<ul>
-<li>简单看下代码，使用非常方便，在<code>OrderService</code>中的提交订单方法上加 <font style="color:red"><code>@GlobalTransactional</code></font>注解，<code>name</code>的值应该填充为<code>application.yml</code>中配置的事务分组名称<strong>eyestarrysky-seata</strong>，<code>flag</code>字段方便我在测试接口时控制提交，和回滚</li>
-</ul>
-<pre><code class="java">@GlobalTransactional(name = &quot;eyestarrysky-seata&quot;, rollbackFor = Exception.class)
-public void submitOrder(Long goodsId, Long accountId, Integer amount, Integer flag) {
-    //查询商品
-    Goods goods = goodsClient.findById(goodsId);
-    if (goods == null) {
-        throw new IllegalArgumentException(&quot;商品数据找不到&quot;);
-    }
-    if (goods.getStock() &lt; amount) {
-        log.warn(&quot;【生成订单失败，商品库存不足】商品信息: {}, 购买数量amount = {}&quot;, JSON.toJSONString(goods), amount);
-        return;
-    }
-    BigDecimal orderPrice = goods.getPrice().multiply(BigDecimal.valueOf(amount));
-
-    Account account = accountClient.findOneAccount(accountId);
-    if (account == null) {
-        throw new IllegalArgumentException(&quot;账户找不到&quot;);
-    }
-    if (account.getMoney().compareTo(orderPrice) &lt; 0) {
-        log.warn(&quot;【生成订单失败，账户余额不足】账户余额: {}, 订单总额amount = {}&quot;, account.getMoney(), orderPrice);
-        return;
-    }
-    OrderDetail orderDetail = new OrderDetail();
-    orderDetail.setAccountId(accountId);
-    orderDetail.setAmount(amount);
-    orderDetail.setGoodsId(goodsId);
-    orderDetail.setPrice(orderPrice);
-    //1.本地事务-扣减库存
-    orderDetailMapper.insert(orderDetail);
-
-    //2. 远程事务-扣减库存
-    goodsClient.reduceStock(goodsId, amount);
-    //3. 远程事务-扣减余额
-    accountClient.deductionMoney(accountId, orderPrice);
-
-    if (flag &gt; 0) {
-        log.error(&quot;【发生异常，事务回滚】&quot;);
-        throw new RuntimeException(&quot;回滚事务&quot;);
-    }
-}</code></pre>
-<h4 id="事务执行中的数据情况"><a href="#事务执行中的数据情况" class="headerlink" title="事务执行中的数据情况"></a>事务执行中的数据情况</h4><ul>
-<li><p>商品数据</p>
-<pre><code class="json">{
-    &quot;id&quot;: 1,
-    &quot;price&quot;: 5000
-    &quot;stock&quot;: 6
-}</code></pre>
-</li>
-<li><p>账户数据</p>
-<pre><code class="json">{
-    &quot;id&quot;: 1,
-    &quot;money&quot;: 30000.00,
-    &quot;gmtCreate&quot;: &quot;2020-09-08T17:26:44.000+00:00&quot;,
-    &quot;gmtModify&quot;: &quot;2021-05-28T08:56:33.000+00:00&quot;
-}</code></pre>
-</li>
-</ul>
-<h5 id="正常下单"><a href="#正常下单" class="headerlink" title="正常下单"></a>正常下单</h5><pre><code class="json"># 购买商品一件，订单正常生成
-# 商品
-{
-    &quot;id&quot;: 1,
-    &quot;price&quot;: 5000
-    &quot;stock&quot;: 5
-}
-
-# 账户
-{
-    &quot;id&quot;: 1,
-    &quot;money&quot;: 25000.00,
-    &quot;gmtCreate&quot;: &quot;2020-09-08T17:26:44.000+00:00&quot;,
-    &quot;gmtModify&quot;: &quot;2021-05-28T08:56:33.000+00:00&quot;
-}</code></pre>
-<h5 id="日志打印"><a href="#日志打印" class="headerlink" title="日志打印"></a>日志打印</h5><pre><code class="json"># 订单生成前，开启事务，并生成xid 
-i.seata.tm.api.DefaultGlobalTransaction  : Begin new global transaction [172.17.0.2:8091:141593301408030720]
-# 生成订单完成 --&gt; 扣减商品库存前
-# 此时undo_log表里面写入一条数据
-{
-    &quot;branch_id&quot;: 141593374497972224,
-    &quot;xid&quot;: &quot;172.17.0.2:8091:141593301408030720&quot;,
-    &quot;rollback_info&quot;: &quot;xxx&quot;
-}
-
-# 扣减库存完成，undo_log表多了一条数据,xid是相同的
-{
-    &quot;branch_id&quot;: 141594493718634496,
-    &quot;xid&quot;: &quot;172.17.0.2:8091:141593301408030720&quot;,
-    &quot;rollback_info&quot;: &quot;xxx&quot;
-}</code></pre>
-<h5 id="订单下单失败的情况"><a href="#订单下单失败的情况" class="headerlink" title="订单下单失败的情况"></a>订单下单失败的情况</h5><ul>
-<li>这里我简单的测试了3种情况<ol>
-<li>下单超时情况（全局事务未提交前），回滚成功</li>
-<li>本地事务发生异常，回滚成功</li>
-<li>分支事务发生异常，回滚成功</li>
-</ol>
-</li>
-</ul>
-<h3 id="写在最后"><a href="#写在最后" class="headerlink" title="写在最后"></a>写在最后</h3><ul>
-<li>这篇文章只是对<code>seata</code>的简单介绍和应用，后面我会另写一篇文章（埋个坑）来从源码的角度更深入地分析，<code>seata</code>是如何处理分布式事务的。</li>
-</ul>
-]]></content>
-      <categories>
-        <category>分布式事务</category>
-      </categories>
-      <tags>
-        <tag>seata</tag>
-        <tag>分布式事务</tag>
       </tags>
   </entry>
 </search>
