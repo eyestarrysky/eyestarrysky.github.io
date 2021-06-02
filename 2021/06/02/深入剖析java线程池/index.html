@@ -171,13 +171,9 @@
 <h3 id="ThreadPoolExecutor的核心参数"><a href="#ThreadPoolExecutor的核心参数" class="headerlink" title="ThreadPoolExecutor的核心参数"></a>ThreadPoolExecutor的核心参数</h3><ul>
 <li>先来看看全参构造器</li>
 </ul>
-<pre><code class="java">public ThreadPoolExecutor(int corePoolSize,
-                          int maximumPoolSize,
-                          long keepAliveTime,
-                          TimeUnit unit,
-                          BlockingQueue&lt;Runnable&gt; workQueue,
-                          ThreadFactory threadFactory,
-                          RejectedExecutionHandler handler) </code></pre>
+<pre><code class="java">public ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime,
+  TimeUnit unit, BlockingQueue&lt;Runnable&gt; workQueue, ThreadFactory threadFactory,
+  RejectedExecutionHandler handler) </code></pre>
 <h4 id="corePoolSize-核心线程大小"><a href="#corePoolSize-核心线程大小" class="headerlink" title="corePoolSize(核心线程大小)"></a>corePoolSize(核心线程大小)</h4><ul>
 <li>当<code>poolSize</code>小于<code>corePoolSize</code>时，线程池会创建一个新的线程来处理任务，即使其它空闲的线程能处理新任务也会创建线程</li>
 <li>调用线程池的<code>prestartAllCoreThreads()</code>方法会提前创建，并且启动所有基本线程。</li>
@@ -255,7 +251,7 @@
 <li><code>TIDYING</code>：所有任务都终止，并且工作线程也为0，处于关闭之前的状态</li>
 <li><code>TERMINATED</code>：已关闭。</li>
 </ul>
-<p><img src="https://mmbiz.qpic.cn/mmbiz_png/eSdk75TK4nFApmmGxuSmkFnGZIczU6HYs2XzibU6JNtBALibRhZTFWPVicaQ5IYst97Zh1mOIlSdJLbanMEIX8N4w/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1" alt=""></p>
+<p><img src="http://qiniu.eyestarrysky.top/java%E7%BA%BF%E7%A8%8B%E6%B1%A0%E7%9A%84%E7%8A%B6%E6%80%81.png" alt=""></p>
 <h4 id="execute方法"><a href="#execute方法" class="headerlink" title="execute方法"></a>execute方法</h4><pre><code class="java">public void execute(Runnable command) {
     //如果提交了空的任务 抛出异常
     if (command == null)
@@ -375,21 +371,21 @@ private boolean addWorker(Runnable firstTask, boolean core) {
                    int rs = runStateOf(ctl.get());
 
                    if (rs &lt; SHUTDOWN ||
-                       (rs == SHUTDOWN &amp;&amp; firstTask == null)) {
-                       if (t.isAlive()) // precheck that t is startable
-                           throw new IllegalThreadStateException();
-                          // 添加工作到hashset中保存
-                       workers.add(w);
-                       int s = workers.size();
-                       if (s &gt; largestPoolSize)
-                           largestPoolSize = s;
-                       workerAdded = true;
+                        (rs == SHUTDOWN &amp;&amp; firstTask == null)) {
+                        if (t.isAlive()) // precheck that t is startable
+                        throw new IllegalThreadStateException();
+                         // 添加工作到hashset中保存
+                        workers.add(w);
+                        int s = workers.size();
+                         if (s &gt; largestPoolSize)
+                        largestPoolSize = s;
+                        workerAdded = true;
                    }
                } finally {
                    mainLock.unlock();
                }
                if (workerAdded) {
-                      // 工作线程启动 执行第一个任务 就是新提交的任务
+                   // 工作线程启动 执行第一个任务 就是新提交的任务
                    t.start();
                    workerStarted = true;
                }
@@ -427,21 +423,21 @@ private boolean addWorker(Runnable firstTask, boolean core) {
                    !wt.isInterrupted())
                    wt.interrupt();
                try {
-           //执行beforeExecute方法
+                       //执行beforeExecute方法
                    beforeExecute(wt, task);
                    Throwable thrown = null;
                    try {
-           //调用Runable的run方法
-                       task.run();
+                       //调用Runable的run方法
+                    task.run();
                    } catch (RuntimeException x) {
-                       thrown = x; throw x;
-                   } catch (Error x) {
-                       thrown = x; throw x;
-                   } catch (Throwable x) {
-                       thrown = x; throw new Error(x);
-                   } finally {
-                          // 执行aferExecute方法
-                       afterExecute(task, thrown);
+                     thrown = x; throw x;
+                    } catch (Error x) {
+                    thrown = x; throw x;
+                     } catch (Throwable x) {
+                    thrown = x; throw new Error(x);
+                    } finally {
+                    // 执行aferExecute方法
+                    afterExecute(task, thrown);
                    }
                } finally {
                    task = null;

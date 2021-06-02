@@ -165,12 +165,11 @@
 ThreadPoolExecutor的核心参数
 先来看看全参构造器
 
-public ThreadPoolExecutor(int corePoolSize,
-                          int maximumPoolSize,
-                          long keepAliveTime,
-                          TimeUnit unit,
-                          BlockingQueue&lt;Runnable&gt; workQueue,
-      </div>
+public ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime,
+  TimeUnit unit, BlockingQueue&lt;Runnable&gt; workQueue, ThreadFactory threadFactory,
+  RejectedExecutionHandler handler) 
+corePoolSize(核心线程大小)
+当poolSize小于corePoolSi</div>
         </div>
       </a>
 
