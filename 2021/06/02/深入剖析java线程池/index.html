@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="/img/favicon.png">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="description" content="">
+  <meta name="author" content="eyestarrysky">
+  <meta name="keywords" content="">
+  <title>分布式事务解决方案-Seata - 眼底星空</title>
+
+  <link  rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/5.12.1/css/all.min.css" />
+<link  rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/css/bootstrap.min.css" />
+<link  rel="stylesheet" href="https://cdn.staticfile.org/github-markdown-css/3.0.1/github-markdown.min.css" />
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1067060_qzomjdt8bmp.css">
+
+
+
+  <link  rel="stylesheet" href="/lib/prettify/tomorrow-night-eighties.min.css" />
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand"
+       href="/">&nbsp;<strong>眼底星空</strong>&nbsp;</a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/">首页</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/archives/">归档</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/categories/">分类</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/tags/">标签</a>
+          </li>
+        
+          
+          
+          
+          
+          <li class="nav-item">
+            <a class="nav-link" href="/about/">关于</a>
+          </li>
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" data-toggle="modal" data-target="#modalSearch">&nbsp;&nbsp;<i
+                class="iconfont icon-search"></i>&nbsp;&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="view intro-2" id="background" parallax=true
+         style="background: url('/img/one_punch_man.jpg') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center">
+          <div class="container text-center white-text fadeInUp">
+            <span class="h2" id="subtitle">
+              
+            </span>
+
+            
+              
+                <p class="mt-3 post-meta">
+                  <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                  星期三, 六月 2日 2021, 9:20 晚上
+                </p>
+              
+
+              <p class="mt-1">
+                
+                  
+                  <span class="post-meta">
+                    <i class="far fa-chart-bar"></i>
+                    3.3k 字
+                  </span>
+                
+
+                
+                  
+                  <span class="post-meta">
+                      <i class="far fa-clock"></i>
+                    
+                    
+                    42
+                     分钟
+                  </span>
+                
+
+                
+              </p>
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-md">
+      <div class="container nopadding-md" id="board-ctn">
+        <div class="py-5" id="board">
+          <div class="post-content mx-auto" id="post">
+            
+            <div class="markdown-body">
+              <h3 id="一张图概览线程池的处理逻辑"><a href="#一张图概览线程池的处理逻辑" class="headerlink" title="一张图概览线程池的处理逻辑"></a>一张图概览线程池的处理逻辑</h3><p><img src="http://qiniu.eyestarrysky.top/%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%9B%BE%E7%89%87.png" alt=""></p>
+<h3 id="ThreadPoolExecutor的核心参数"><a href="#ThreadPoolExecutor的核心参数" class="headerlink" title="ThreadPoolExecutor的核心参数"></a>ThreadPoolExecutor的核心参数</h3><ul>
+<li>先来看看全参构造器</li>
+</ul>
+<pre><code class="java">public ThreadPoolExecutor(int corePoolSize,
+                          int maximumPoolSize,
+                          long keepAliveTime,
+                          TimeUnit unit,
+                          BlockingQueue&lt;Runnable&gt; workQueue,
+                          ThreadFactory threadFactory,
+                          RejectedExecutionHandler handler) </code></pre>
+<h4 id="corePoolSize-核心线程大小"><a href="#corePoolSize-核心线程大小" class="headerlink" title="corePoolSize(核心线程大小)"></a>corePoolSize(核心线程大小)</h4><ul>
+<li>当<code>poolSize</code>小于<code>corePoolSize</code>时，线程池会创建一个新的线程来处理任务，即使其它空闲的线程能处理新任务也会创建线程</li>
+<li>调用线程池的<code>prestartAllCoreThreads()</code>方法会提前创建，并且启动所有基本线程。</li>
+</ul>
+<h4 id="maximumPoolSize-线程池的最大数量"><a href="#maximumPoolSize-线程池的最大数量" class="headerlink" title="maximumPoolSize(线程池的最大数量)"></a>maximumPoolSize(线程池的最大数量)</h4><ul>
+<li>如果任务队列满了，并且已创建的线程数，小于最大数量，线程池就会创建一个新的线程来处理。</li>
+<li>如果<code>workQueue</code>是<font style="color:red;">无界队列</font>，那么这个参数就没效果</li>
+</ul>
+<h4 id="keepAliveTime-线程存活时间"><a href="#keepAliveTime-线程存活时间" class="headerlink" title="keepAliveTime(线程存活时间)"></a>keepAliveTime(线程存活时间)</h4><ul>
+<li>线程的工作线程空闲后保持存活的世界，默认情况下当线程池的线程数小于<code>corePoolSize</code>时生效。当<code>allowCoreThreadTimeOut</code>设置为true时核心线程超时也会被回收</li>
+<li>如果任务很多，每个任务执行时间比较短，可以适当调大时间，提高线程利用率</li>
+</ul>
+<h4 id="workQueue-任务队列"><a href="#workQueue-任务队列" class="headerlink" title="workQueue(任务队列)"></a>workQueue(任务队列)</h4><ul>
+<li>用于保存等待执行的任务的阻塞队列。可以选择以下几个阻塞队列。<ul>
+<li><code>ArrayBlockingQueue</code>：是一个基于数组结构的有界阻塞队列，此队列按FIFO（先进先出）原则对元素进行排序。</li>
+<li><code>LinkedBlockingQueue</code>：一个基于链表结构的阻塞队列，此队列按FIFO排序元素，吞吐量通常要高于<code>ArrayBlockingQueue</code>。静态工厂方法<code>Executors.newFixedThreadPool()</code>使用了这个队列。</li>
+<li><code>SynchronousQueue</code>：一个不存储元素的阻塞队列。每个插入操作必须等到另一个线程调用移除操作，否则插入操作一直处于阻塞状态，吞吐量通常要高于<code>LinkedBlockingQueue</code>，静态工厂方法<code>Executors.newCachedThreadPool</code>使用了这个队列。</li>
+<li><code>priorityBlockingQueue</code>：一个具有优先级的无限阻塞队列。</li>
+</ul>
+</li>
+</ul>
+<h4 id="threadFactory-线程工厂"><a href="#threadFactory-线程工厂" class="headerlink" title="threadFactory(线程工厂)"></a>threadFactory(线程工厂)</h4><ul>
+<li><p>用于设置创建线程的工厂，可以通过线程工厂给每个创建出来的线程设置更有意义的名字。</p>
+</li>
+<li><p>使用开源框架guava提供的<code>ThreadFactoryBuilder</code>可以快速给线程池里的线程设置有意义的名字，代码如下。</p>
+<pre><code class="java">new ThreadFactoryBuilder().setNameFormat(&quot;XX-task-%d&quot;).build();</code></pre>
+</li>
+</ul>
+<h4 id="handler-饱和策略"><a href="#handler-饱和策略" class="headerlink" title="handler(饱和策略)"></a>handler(饱和策略)</h4><p>当队列和线程池都满了，说明线程池处于饱和状态，那么必须采取一种策略处理提交的新任务。这个策略默认情况下是<code>AbortPolicy</code>，表示无法处理新任务时抛出异常。在JDK 1.5中Java线程池框架提供了以下4种策略。</p>
+<ul>
+<li><code>AbortPolicy</code>：直接抛出异常。</li>
+<li><code>CallerRunsPolicy</code>：调用任务的<code>run()</code>方法绕过线程池直接执行。</li>
+<li><code>DiscardOldestPolicy</code>：丢弃队列里最近节点的一个任务，并执行当前任务。</li>
+<li><code>DiscardPolicy</code>：不处理，丢弃掉。</li>
+</ul>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><ol>
+<li>如果当前运行的线程少于<code>corePoolSize</code>，则创建新线程来执行任务（注意，执行这一步骤需要获取全局锁）。</li>
+<li>如果运行的线程等于或多于<code>corePoolSize</code>，则将任务加入<code>BlockingQueue</code>。</li>
+<li>如果无法将任务加入<code>BlockingQueue</code>（队列已满），则创建新的线程来处理任务（注意，执行这一步骤需要获取全局锁）。</li>
+<li>如果创建新线程将使当前运行的线程超出<code>maximumPoolSize</code>，任务将被拒绝，并调用<code>RejectedExecutionHandler.rejectedExecution()</code>方法。根据不同的拒绝策略去处理。</li>
+</ol>
+<p><strong>ThreadPoolExecutor采取上述步骤的总体设计思路，是为了在执行execute()方法时，尽可能地避免获取全局锁（那将会是一个严重的可伸缩瓶颈）。在ThreadPoolExecutor完成预热之后（当前运行的线程数大于等于corePoolSize），几乎所有的execute()方法调用都是执行步骤2，而步骤2不需要获取全局锁。</strong></p>
+<h3 id="核心源码剖析"><a href="#核心源码剖析" class="headerlink" title="核心源码剖析"></a>核心源码剖析</h3><h4 id="处理线程池状态和工作队列的参数-ctl"><a href="#处理线程池状态和工作队列的参数-ctl" class="headerlink" title="处理线程池状态和工作队列的参数 - ctl"></a>处理线程池状态和工作队列的参数 - ctl</h4><pre><code class="java">private final AtomicInteger ctl = new AtomicInteger(ctlOf(RUNNING, 0));
+   // 29
+   private static final int COUNT_BITS = Integer.SIZE - 3; 
+   // 000-1(29个1)
+   private static final int CAPACITY  = (1 &lt;&lt; COUNT_BITS) - 1;
+
+   //用左边3位，实现5种线程状态
+   //111-0,,,  此状态表示线程池能接收新的任务，十进制为: -536,870,912
+   private static final int RUNNING    = -1 &lt;&lt; COUNT_BITS;
+
+   //000-0...  此此状态不接受新的任务，但是可以继续执行队列中的任务
+   private static final int SHUTDOWN   =  0 &lt;&lt; COUNT_BITS;
+
+   //001-0...  此状态全面拒绝，并中断正在处理的任务 十进制为: 536,870,912
+   private static final int STOP       =  1 &lt;&lt; COUNT_BITS;
+
+   //010-0...  此状态表示所有任务已经被终止
+   private static final int TIDYING    =  2 &lt;&lt; COUNT_BITS;
+
+   //011-0...  此状态表示已经清理完现场
+   private static final int TERMINATED =  3 &lt;&lt; COUNT_BITS;
+
+   // ~掩码取反
+   private static int runStateOf(int c)     { return c &amp; ~CAPACITY; }
+   // 获取工作线程数目
+   private static int workerCountOf(int c)  { return c &amp; CAPACITY; }
+   // 合并rs(工作状态)和wc(工作线程数) 或运算 到一个32位数中
+   private static int ctlOf(int rs, int wc) { return rs | wc; }</code></pre>
+<h4 id="线程池状态及状态切换"><a href="#线程池状态及状态切换" class="headerlink" title="线程池状态及状态切换"></a>线程池状态及状态切换</h4><ul>
+<li><code>RUNNING</code>：能接受新任务，并处理阻塞队列中的任务</li>
+<li><code>SHUTDOWN</code>：不接受新任务，但是可以处理阻塞队列中的任务</li>
+<li><code>STOP</code>：不接受新任务，并且不处理阻塞队列中的任务，并且还打断正在运行任务的线程，就是直接撂担子不干了！</li>
+<li><code>TIDYING</code>：所有任务都终止，并且工作线程也为0，处于关闭之前的状态</li>
+<li><code>TERMINATED</code>：已关闭。</li>
+</ul>
+<p><img src="https://mmbiz.qpic.cn/mmbiz_png/eSdk75TK4nFApmmGxuSmkFnGZIczU6HYs2XzibU6JNtBALibRhZTFWPVicaQ5IYst97Zh1mOIlSdJLbanMEIX8N4w/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1" alt=""></p>
+<h4 id="execute方法"><a href="#execute方法" class="headerlink" title="execute方法"></a>execute方法</h4><pre><code class="java">public void execute(Runnable command) {
+    //如果提交了空的任务 抛出异常
+    if (command == null)
+        throw new NullPointerException();
+    int c = ctl.get();//获取当前线程池的状态
+    //检查当前工作线程数量是否小于核心线程数量
+    if (workerCountOf(c) &lt; corePoolSize) {
+        // 通过addWorker方法提交任务
+        if (addWorker(command, true))
+            return;
+        c = ctl.get();//如果提交失败 需要二次检查状态
+    }
+    //向工作线程提交任务，如果线程池为running，则将线程加入等待队列
+    if (isRunning(c) &amp;&amp; workQueue.offer(command)) {
+        // 再次检查状态
+        int recheck = ctl.get();
+        //如果重新检查发现线程池不为ruuning，就从队列中移除线程，并执行拒绝策略
+        if (!isRunning(recheck) &amp;&amp; remove(command))
+            reject(command);
+        //如果之前的线程已经消费完，就新建一个线程
+        else if (workerCountOf(recheck) == 0)
+            addWorker(null, false);
+    }
+    //如果核心池和等待队列都满了，则尝试创建一个新线程
+    else if (!addWorker(command, false))
+        //如果addWork()返回false，则执行拒绝策略
+        reject(command);
+}</code></pre>
+<h4 id="Worker类"><a href="#Worker类" class="headerlink" title="Worker类"></a>Worker类</h4><ul>
+<li><code>Worker</code></li>
+</ul>
+<pre><code class="java">private final class Worker
+        extends AbstractQueuedSynchronizer
+        implements Runnable
+    {
+
+        /** Thread this worker is running in.  Null if factory fails. */
+        final Thread thread;
+        /** Initial task to run.  Possibly null. */
+        Runnable firstTask;
+        /** Per-thread task counter */
+        volatile long completedTasks;
+
+        /**
+         * 这里传入任务，并将Worker自己放入到thread中
+         */
+        Worker(Runnable firstTask) {
+            setState(-1); // inhibit interrupts until runWorker
+            this.firstTask = firstTask;
+            //
+            this.thread = getThreadFactory().newThread(this);
+        }
+
+        /** 后续工作线程执行的时候触发这里  */
+        public void run() {
+            runWorker(this);
+        }
+    }</code></pre>
+<h4 id="addWorker方法"><a href="#addWorker方法" class="headerlink" title="addWorker方法"></a>addWorker方法</h4><ul>
+<li>这个方法是任务提交的一个核心方法。在里面完成了状态检查、新建任务、执行任务等一系列动作。</li>
+</ul>
+<pre><code class="java">/**
+ * 检查是否能添加一个新的任务线程，如果可以则创建并启动任务
+ * 返回false的可能性如下：
+ * 1.线程池不为RUNNING状态
+ * 2.线程工厂创建新的任务线程失败
+ * firstTask: 外部启动线程池时需要构造的第一个线程
+ */
+private boolean addWorker(Runnable firstTask, boolean core) {
+    //循环标记
+       retry:
+   //死循环更新状态
+       for (;;) {
+           int c = ctl.get();
+           int rs = runStateOf(c);//获取运行状态
+
+       //检查线程池是否处于关闭状态
+           if (rs &gt;= SHUTDOWN &amp;&amp;
+               ! (rs == SHUTDOWN &amp;&amp;
+                  firstTask == null &amp;&amp;
+                  ! workQueue.isEmpty()))
+               return false;
+
+           for (;;) {
+         // 获取当前工作线程数量
+               int wc = workerCountOf(c);
+       //如果已经超过corePoolSize获取maximumPoolSize 返回false
+               if (wc &gt;= CAPACITY ||
+                   wc &gt;= (core ? corePoolSize : maximumPoolSize))
+                   return false;
+       //CAS增加一个工作线程
+               if (compareAndIncrementWorkerCount(c))
+                break retry;
+       //再次获取状态
+               c = ctl.get();  // Re-read ctl
+       //如果状态更新失败 则循环更新
+               if (runStateOf(c) != rs)
+                   continue retry;
+               // else CAS failed due to workerCount change; retry inner loop
+           }
+       }
+
+       boolean workerStarted = false;
+       boolean workerAdded = false;
+       Worker w = null;
+       try {
+           w = new Worker(firstTask);//初始化一个工作线程
+           final Thread t = w.thread;
+           if (t != null) {
+               // 获得全局锁
+               final ReentrantLock mainLock = this.mainLock;
+               mainLock.lock();
+               try {
+                   // Recheck while holding lock.
+                   // Back out on ThreadFactory failure or if
+                   // shut down before lock acquired.
+                   int rs = runStateOf(ctl.get());
+
+                   if (rs &lt; SHUTDOWN ||
+                       (rs == SHUTDOWN &amp;&amp; firstTask == null)) {
+                       if (t.isAlive()) // precheck that t is startable
+                           throw new IllegalThreadStateException();
+                          // 添加工作到hashset中保存
+                       workers.add(w);
+                       int s = workers.size();
+                       if (s &gt; largestPoolSize)
+                           largestPoolSize = s;
+                       workerAdded = true;
+                   }
+               } finally {
+                   mainLock.unlock();
+               }
+               if (workerAdded) {
+                      // 工作线程启动 执行第一个任务 就是新提交的任务
+                   t.start();
+                   workerStarted = true;
+               }
+           }
+       } finally {
+           if (! workerStarted)
+               addWorkerFailed(w);
+       }
+       return workerStarted;
+   }</code></pre>
+<h4 id="runWorker方法"><a href="#runWorker方法" class="headerlink" title="runWorker方法"></a>runWorker方法</h4><ul>
+<li><p>在看<code>addWorker</code>时发现，当工作线程创建成功后，会调用<code>t.start()</code>我们知道它实际执行的就是<code>Worker</code>对象的<code>run()</code>方法，而<code>worker</code>的<code>run()</code>方法是这样定义的：</p>
+<pre><code class="java">public void run() {
+    runWorker(this);
+}</code></pre>
+</li>
+<li><p>它实际上是将自己委托给线程池的<code>runWorker</code>方法，不断执行我们提交的任务的run方法。而这个任务可能是我们新提交的，也有可能是从等待队列中获取的。这样就实现了线程池的完成逻辑。</p>
+<pre><code class="java">final void runWorker(Worker w) {
+    Thread wt = Thread.currentThread();
+    Runnable task = w.firstTask;
+    w.firstTask = null;
+    w.unlock(); // allow interrupts
+    boolean completedAbruptly = true;
+       try {
+       //不断地从blockingQueue获取任务
+           while (task != null || (task = getTask()) != null) {
+               w.lock();
+               // If pool is stopping, ensure thread is interrupted;
+               // if not, ensure thread is not interrupted.  This
+               // requires a recheck in second case to deal with
+               // shutdownNow race while clearing interrupt
+               if ((runStateAtLeast(ctl.get(), STOP) ||
+                    (Thread.interrupted() &amp;&amp;
+                     runStateAtLeast(ctl.get(), STOP))) &amp;&amp;
+                   !wt.isInterrupted())
+                   wt.interrupt();
+               try {
+           //执行beforeExecute方法
+                   beforeExecute(wt, task);
+                   Throwable thrown = null;
+                   try {
+           //调用Runable的run方法
+                       task.run();
+                   } catch (RuntimeException x) {
+                       thrown = x; throw x;
+                   } catch (Error x) {
+                       thrown = x; throw x;
+                   } catch (Throwable x) {
+                       thrown = x; throw new Error(x);
+                   } finally {
+                          // 执行aferExecute方法
+                       afterExecute(task, thrown);
+                   }
+               } finally {
+                   task = null;
+                   w.completedTasks++;
+                   w.unlock();
+               }
+           }
+           completedAbruptly = false;
+       } finally {
+           processWorkerExit(w, completedAbruptly);
+       }
+}</code></pre>
+</li>
+</ul>
+<h3 id="自己动手实现一个简易线程池"><a href="#自己动手实现一个简易线程池" class="headerlink" title="自己动手实现一个简易线程池"></a>自己动手实现一个简易线程池</h3><h4 id="线程池类"><a href="#线程池类" class="headerlink" title="线程池类"></a>线程池类</h4><pre><code class="java">@Slf4j
+public class SimpleThreadPoolExecutor {
+
+    private final BlockingQueue&lt;Runnable&gt; blockingQueue;
+
+    public SimpleThreadPoolExecutor(BlockingQueue&lt;Runnable&gt; blockingQueue, int threadSize) {
+        this.blockingQueue = blockingQueue;
+        Set&lt;SimpleThread&gt; workThreads = new HashSet&lt;&gt;();
+        for (int i = 0; i &lt; threadSize; i++) {
+            SimpleThread simpleThread = new SimpleThread(&quot;simpleThread-&quot; + i);
+            simpleThread.start();
+            workThreads.add(simpleThread);
+        }
+    }
+
+    public void execute(Runnable task) {
+        blockingQueue.add(task);
+    }
+
+    @Data
+    private final class SimpleThread extends Thread {
+
+        public SimpleThread(@NotNull String name) {
+            super(name);
+        }
+
+        @Override
+        public void run() {
+            while (true) {
+                try {
+                    // 这里如果没有任务，会一直阻塞(底层调了LockSupport.park(this))
+                    Runnable task = blockingQueue.take();
+                    task.run();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    log.error(&quot;【获取任务发生异常】, 错误信息 = {}&quot;, ExceptionUtils.getRootCauseMessage(e));
+                }
+            }
+        }
+    }
+
+}</code></pre>
+<h4 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h4><pre><code class="java">public static void main(String[] args) {
+    SimpleThreadPoolExecutor executor =
+        new SimpleThreadPoolExecutor(new LinkedBlockingQueue&lt;&gt;(), Runtime.getRuntime().availableProcessors());
+    Random r = new Random();
+    for (int i = 0; i &lt; 100; i++) {
+        executor.execute(() -&gt; System.err.println(Thread.currentThread().getName() + &quot;: 执行结果为&quot; + r.nextInt(100)));
+    }
+}
+
+-------------  测试结果
+simpleThread-0: 执行结果为51
+simpleThread-1: 执行结果为55
+simpleThread-4: 执行结果为74
+simpleThread-7: 执行结果为21
+simpleThread-4: 执行结果为36
+simpleThread-1: 执行结果为57
+simpleThread-6: 执行结果为81
+......</code></pre>
+<h3 id="几道关于线程池的问题及解答"><a href="#几道关于线程池的问题及解答" class="headerlink" title="几道关于线程池的问题及解答"></a>几道关于线程池的问题及解答</h3><h4 id="问题一"><a href="#问题一" class="headerlink" title="问题一"></a>问题一</h4><blockquote>
+<p>如果线程数小于核心线程数，并且线程都处于空闲状态，现提交一个任务，是新起一个线程还是给之前创建的线程？ </p>
+</blockquote>
+<ul>
+<li>线程池会新起一个线程来执行这个新任务，不管老线程是否空闲。 </li>
+</ul>
+<h4 id="问题二"><a href="#问题二" class="headerlink" title="问题二"></a>问题二</h4><blockquote>
+<p>如果线程池中的线程在执行任务的时候，抛异常了，会怎么样？</p>
+</blockquote>
+<ul>
+<li>查看<code>runWorker</code>方法，如果发生异常会进入到<code>afterExecute(task, thrown)</code>， 并且也继续被抛了出来 ，进入<code>processWorkerExit(w, completedAbruptly)</code>方法</li>
+<li>简而言之把<strong><font style="color:red;">这个线程废了，然后新建一个线程。 </font></strong></li>
+</ul>
+<pre><code class="java">    private void processWorkerExit(Worker w, boolean completedAbruptly) {
+        if (completedAbruptly) // If abrupt, then workerCount wasn&#39;t adjusted
+            decrementWorkerCount();
+
+        final ReentrantLock mainLock = this.mainLock;
+        mainLock.lock();
+        try {
+            completedTaskCount += w.completedTasks;
+            // 移除了线程的引用, gc会处理
+            workers.remove(w);
+        } finally {
+            mainLock.unlock();
+        }
+
+        tryTerminate();
+
+        int c = ctl.get();
+        if (runStateLessThan(c, STOP)) {
+            if (!completedAbruptly) {
+                int min = allowCoreThreadTimeOut ? 0 : corePoolSize;
+                if (min == 0 &amp;&amp; ! workQueue.isEmpty())
+                    min = 1;
+                if (workerCountOf(c) &gt;= min)
+                    return; // replacement not needed
+            }
+            // 新加入一个线程
+            addWorker(null, false);
+        }
+    }</code></pre>
+<h4 id="问题三"><a href="#问题三" class="headerlink" title="问题三"></a>问题三</h4><blockquote>
+<p>线程池的核心线程在空闲的时候一定不会被回收吗？ </p>
+</blockquote>
+<ul>
+<li>有个 <code>allowCoreThreadTimeOut</code> 方法，把它设置为 true ，则所有线程都会超时时间，不会有核心数那条线的存在。具体是会调用 <code>interruptIdleWorkers</code> 这个方法</li>
+</ul>
+<h4 id="问题四"><a href="#问题四" class="headerlink" title="问题四"></a>问题四</h4><blockquote>
+<p>线程池如何动态修改核心线程数和最大线程数？ </p>
+</blockquote>
+<p>其实之所以会有这样的需求是因为线程数是真的不好配置。</p>
+<p>你可能会在网上或者书上看到很多配置公式，比如：</p>
+<ul>
+<li><strong>CPU 密集型的话，核心线程数设置为 CPU核数+1</strong></li>
+<li><strong>I/O 密集型的话，核心线程数设置为 2 * CPU核数</strong></li>
+</ul>
+<p>比如：<strong>线程数=CPU核数 *（1+线程等待时间 / 线程时间运行时间）</strong></p>
+<p>这个比上面的更贴合与业务，还有一些理想的公式就不列了。就这个公式而言，这个线程等待时间就很难测，拿 Tomcat 线程池为例，每个请求的等待时间能知道？不同的请求不同的业务，就算相同的业务，不同的用户数据量也不同，等待时间也不同。</p>
+<p>所以说线程数真的很难通过一个公式一劳永逸，线程数的设定是一个迭代的过程，需要压测适时调整，以上的公式做个初始值开始调试是 ok 的。</p>
+<p>再者，流量的突发性也是无法判断的，举个例子 1 秒内一共有 1000 个请求量，但是如果这 1000 个请求量都是在第一毫秒内瞬时进来的呢？</p>
+
+            </div>
+            <hr>
+            <div>
+              <p>
+                
+                  <span>
+                <i class="iconfont icon-inbox"></i>
+                    
+                      <a class="hover-with-bg" href="/categories/java/">java</a>
+                      &nbsp;
+                    
+                      <a class="hover-with-bg" href="/categories/java/%E7%BA%BF%E7%A8%8B%E6%B1%A0/">线程池</a>
+                      &nbsp;
+                    
+                  </span>&nbsp;&nbsp;
+                
+                
+                  <span>
+                <i class="iconfont icon-tag"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/java/">java</a>
+                    
+                      <a class="hover-with-bg" href="/tags/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a>
+                    
+                  </span>
+                
+              </p>
+              
+                <p class="note note-warning">本博客所有文章除特别声明外，均采用 <a href="https://zh.wikipedia.org/wiki/Wikipedia:CC_BY-SA_3.0%E5%8D%8F%E8%AE%AE%E6%96%87%E6%9C%AC" target="_blank" rel="nofollow noopener noopener">CC BY-SA 3.0协议</a> 。转载请注明出处！</p>
+              
+              
+                <div class="post-prevnext row">
+                  <div class="post-prev col-6">
+                    
+                    
+                  </div>
+                  <div class="post-next col-6">
+                    
+                    
+                      <a href="/2021/05/26/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88-Seata/">
+                        <span class="hidden-mobile">分布式事务解决方案-Seata</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="fa fa-chevron-right"></i>
+                      </a>
+                    
+                  </div>
+                </div>
+              
+            </div>
+
+              
+          </div>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container" id="toc-ctn">
+        <div id="toc">
+  <p class="h5"><i class="far fa-list-alt"></i>&nbsp;目录</p>
+  <div id="tocbot"></div>
+</div>
+
+      </div>
+    
+  </div>
+</div>
+
+<!-- Custom -->
+
+
+    
+  </main>
+
+  
+    <a id="scroll-top-button" href="#" role="button">
+      <i class="fa fa-chevron-up scroll-top-arrow" aria-hidden="true"></i>
+    </a>
+  
+
+  
+    <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+  
+
+  
+
+  
+
+  <footer class="mt-5">
+  <div class="text-center py-3">
+    <div>
+      <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a>
+      <i class="iconfont icon-love"></i>
+      <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener">
+        <span>Fluid</span></a>
+    </div>
+    
+
+    
+
+    
+  </div>
+</footer>
+
+<!-- SCRIPTS -->
+<script  src="https://cdn.staticfile.org/jquery/3.4.1/jquery.min.js" ></script>
+<script  src="https://cdn.staticfile.org/popper.js/1.16.1/umd/popper.min.js" ></script>
+<script  src="https://cdn.staticfile.org/twitter-bootstrap/4.4.1/js/bootstrap.min.js" ></script>
+<script  src="/js/main.js" ></script>
+
+
+
+
+  
+  <script  src="https://cdn.staticfile.org/tocbot/4.10.0/tocbot.min.js" ></script>
+  <script>
+    $(document).ready(function () {
+      var boardCtn = $('#board-ctn');
+      var boardTop = boardCtn.offset().top;
+
+      tocbot.init({
+        tocSelector: '#tocbot',
+        contentSelector: '.post-content',
+        headingSelector: 'h1,h2,h3,h4,h5,h6',
+        linkClass: 'tocbot-link',
+        activeLinkClass: 'tocbot-active-link',
+        listClass: 'tocbot-list',
+        isCollapsedClass: 'tocbot-is-collapsed',
+        collapsibleClass: 'tocbot-is-collapsible',
+        collapseDepth: 0,
+        scrollSmooth: true,
+        headingsOffset: -boardTop
+      });
+      if ($('.toc-list-item').length > 0) {
+        $('#toc > p').css('visibility', 'visible');
+      }
+    });
+  </script>
+
+
+
+
+
+  <script defer src="https://cdn.staticfile.org/clipboard.js/2.0.6/clipboard.min.js" ></script>
+  <script  src="/js/clipboard-use.js" ></script>
+
+
+
+
+
+
+
+
+<!-- Plugins -->
+
+
+
+  <script  src="https://cdn.staticfile.org/prettify/188.0.0/prettify.min.js" ></script>
+  <script>
+    $(document).ready(function () {
+      $('pre').each(function () {
+        const pre = $(this);
+        if (pre.find('code.mermaid').length > 0) {
+          return;
+        }
+        pre.addClass('prettyprint  linenums');
+      });
+      prettyPrint();
+    })
+  </script>
+
+
+
+  <script  src="https://cdn.staticfile.org/typed.js/2.0.11/typed.min.js" ></script>
+  <script>
+    var typed = new Typed('#subtitle', {
+      strings: [
+        '  ',
+        "分布式事务解决方案-Seata&nbsp;",
+      ],
+      cursorChar: "_",
+      typeSpeed: 70,
+      loop: false,
+    });
+    typed.stop();
+    $(document).ready(function () {
+      $(".typed-cursor").addClass("h2");
+      typed.start();
+    });
+  </script>
+
+
+
+  <script  src="https://cdn.staticfile.org/anchor-js/4.2.2/anchor.min.js" ></script>
+  <script>
+    anchors.options = {
+      placement: "right",
+      visible: "hover",
+      
+    };
+    var el = "h1,h2,h3,h4,h5,h6".split(",");
+    var res = [];
+    for (item of el) {
+      res.push(".markdown-body > " + item)
+    }
+    anchors.add(res.join(", "))
+  </script>
+
+
+
+  <script  src="/js/local-search.js" ></script>
+  <script>
+    var path = "/local-search.xml";
+    var inputArea = document.querySelector("#local-search-input");
+    inputArea.onclick = function () {
+      getSearchFile(path);
+      this.onclick = null
+    }
+  </script>
+
+
+
+  <script  src="https://cdn.staticfile.org/fancybox/3.5.7/jquery.fancybox.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.staticfile.org/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+  <script>
+    $('#post img:not(.no-zoom img, img[no-zoom]), img[zoom]').each(
+      function () {
+        var element = document.createElement('a');
+        $(element).attr('data-fancybox', 'images');
+        $(element).attr('href', $(this).attr('src'));
+        $(this).wrap(element);
+      }
+    );
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
